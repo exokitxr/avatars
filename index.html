@@ -101,6 +101,12 @@ scene.remove(meshes.upperLegRight);
 scene.remove(meshes.lowerLegRight);
 scene.remove(meshes.footRight); */
 
+const models = {
+  glb: 'https://exokitxr.github.io/avatar-models/model.glb',
+  vrm: 'https://exokitxr.github.io/avatar-models/model2.vrm',
+  unitypackage: 'https://exokitxr.github.io/avatar-models/model3.unitypackage',
+};
+
 const z180Quaternion = new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), Math.PI);
 
 let rig = null;
@@ -117,7 +123,7 @@ const _rigModel = object => {
   scene.add(model);
   window.model = model;
 };
-new THREE.GLTFLoader().load('https://exokitxr.github.io/avatar-models/model.glb', object => {
+new THREE.GLTFLoader().load(models.glb, object => {
   _rigModel(object.scene);
 }, xhr => {}, err => {
   console.warn(err);
