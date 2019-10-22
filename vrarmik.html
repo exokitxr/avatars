@@ -1,0 +1,294 @@
+<!doctype html>
+<html>
+  <head>
+    <style>
+body {
+  margin: 0;
+}
+    </style>
+    <script src="three.js"></script>
+    <script src="OrbitControls.js"></script>
+    <script src="GLTFLoader.js"></script>
+    <script src="FBXLoader.js"></script>
+    <script src="inflate.min.js"></script>
+    <script src="gunzip.min.js"></script>
+    <script src="ProgressivePromise.js"></script>
+    <script src="untar.js"></script>
+    <script type=module>
+import Rig from './vrarmik/Rig.js';
+import {Vector3, Quaternion} from './vrarmik/Unity.js';
+
+const scene = new THREE.Scene();
+
+const camera = new THREE.PerspectiveCamera(90, window.innerWidth / window.innerHeight, 0.1, 1000);
+camera.position.y = 1.5;
+camera.position.z = 2;
+// camera.rotation.y = Math.PI;
+
+const ambientLight = new THREE.AmbientLight(0x808080);
+scene.add(ambientLight);
+
+const directionalLight = new THREE.DirectionalLight(0xFFFFFF, 1);
+directionalLight.position.set(0.5, 1, 0.5);
+scene.add(directionalLight);
+
+/* const directionalLight2 = new THREE.DirectionalLight(0xFFFFFF, 1);
+directionalLight2.position.set(0, -0.25, -0.25);
+scene.add(directionalLight2); */
+
+const gridHelper = new THREE.GridHelper(10, 10);
+scene.add(gridHelper);
+
+const cubeGeometry = new THREE.ConeBufferGeometry(0.05, 0.2, 3)
+  .applyMatrix(new THREE.Matrix4().makeRotationFromQuaternion(
+    new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 1)))
+  );
+const materials ={};
+const _getCubeMaterial = color => {
+  let material = materials[color];
+  if (!material) {
+    material = new THREE.MeshPhongMaterial({
+      color,
+      flatShading: true,
+    });
+    materials[color] = material;
+  }
+  return material;
+}
+const _makeCubeMesh = (color = 0x0000FF) => {
+  const mesh = new THREE.Mesh(cubeGeometry, _getCubeMaterial(color));
+  mesh.frustumCulled = false;
+  if (color === 0x008000 || color === 0x808000) {
+    // mesh.add(new THREE.AxesHelper());
+  }
+  return mesh;
+};
+const meshes = {
+  eyes: _makeCubeMesh(0xFF0000),
+  head: _makeCubeMesh(0xFF8080),
+
+  chest: _makeCubeMesh(0xFFFF00),
+  shoulderLeft: _makeCubeMesh(0x00FF00),
+  shoulderRight: _makeCubeMesh(0x008000),
+  upperArmLeft: _makeCubeMesh(0x00FFFF),
+  upperArmRight: _makeCubeMesh(0x008080),
+  lowerArmLeft: _makeCubeMesh(0x0000FF),
+  lowerArmRight: _makeCubeMesh(0x000080),
+  handLeft: _makeCubeMesh(0xFFFFFF),
+  handRight: _makeCubeMesh(0x808080),
+
+  hips: _makeCubeMesh(0xFF0000),
+  upperLegLeft: _makeCubeMesh(0xFFFF00),
+  upperLegRight: _makeCubeMesh(0x808000),
+  lowerLegLeft: _makeCubeMesh(0x00FF00),
+  lowerLegRight: _makeCubeMesh(0x008000),
+  footLeft: _makeCubeMesh(0xFFFFFF),
+  footRight: _makeCubeMesh(0x808080),
+};
+for (const k in meshes) {
+  scene.add(meshes[k]);
+}
+/* scene.remove(meshes.shoulderLeft);
+scene.remove(meshes.upperArmLeft);
+scene.remove(meshes.lowerArmLeft);
+scene.remove(meshes.handLeft);
+scene.remove(meshes.shoulderRight);
+scene.remove(meshes.upperArmRight);
+scene.remove(meshes.lowerArmRight);
+scene.remove(meshes.handRight);
+scene.remove(meshes.shoulderRight);
+scene.remove(meshes.upperLegRight);
+scene.remove(meshes.lowerLegRight);
+scene.remove(meshes.footRight); */
+
+const z180Quaternion = new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), Math.PI);
+
+let rig = null;
+let model = null;
+const _rigModel = object => {
+  if (rig) {
+    scene.remove(model);
+    rig = null;
+    model = null;
+  }
+
+  model = object;
+  rig = new Rig(model);
+  scene.add(model);
+  window.model = model;
+};
+new THREE.GLTFLoader().load('model.glb', object => {
+  _rigModel(object.scene);
+}, xhr => {}, err => {
+  console.warn(err);
+});
+
+window.document.addEventListener('dragover', e => {
+  e.preventDefault();
+});
+window.document.addEventListener('drop', async e => {
+  e.preventDefault();
+
+  if (e.dataTransfer.items.length !== 1) {
+    return;
+  }
+
+  for (var i = 0; i < e.dataTransfer.items.length; i++) {
+    if (e.dataTransfer.items[i].kind === 'file') {
+      const file = e.dataTransfer.items[i].getAsFile();
+      const arraybuffer = await file.arrayBuffer();
+      const inflatedArrayBuffer = new Zlib.Gunzip(new Uint8Array(arraybuffer)).decompress().buffer;
+      const files = await untar(inflatedArrayBuffer);
+      // console.log('got files', files);
+      // window.files = files;
+
+      const filesystem = [];
+      for (let j = 0; j < files.length; j++) {
+        const file = files[j];
+        const {name} = file;
+        const match = name.match(/^([a-zA-Z0-9]+)\/pathname$/);
+        if (match) {
+          const pathname = new TextDecoder().decode(await file.blob.arrayBuffer());
+          const id = match[1];
+          const assetFileName = `${id}/asset`;
+          const assetFile = files.find(file => file.name === assetFileName);
+          if (assetFile) {
+            const match = pathname.match(/([^\/]+)$/);
+            const filename = match[1];
+            const url = assetFile.getBlobUrl();
+            filesystem.push({
+              id,
+              pathname,
+              filename,
+              url,
+            });
+          }
+        }
+      }
+      // window.filesystem = filesystem;
+
+      const manager = new THREE.LoadingManager();
+      manager.setURLModifier(url => {
+        // console.log('load url', url);
+        const match = url.match(/([^\/]+)$/);
+        if (match) {
+          const filename = match[1];
+          const file = filesystem.find(file => file.filename === filename);
+          if (file) {
+            // console.log('replace url', url, file.url);
+            url = file.url;
+          }
+        }
+        return url;
+      });
+
+      const modelFileUrl = filesystem.find(file => file.pathname === 'Assets/1Avatars/rachel gardner 1/rachel gardner NEW.fbx').url;
+      const loader = new THREE.FBXLoader(manager);
+      loader.load(modelFileUrl, object => {
+        _rigModel(object);
+      }, function onprogress() {
+
+      }, function onerror(err) {
+        console.warn(err);
+      });
+      window.loader = loader;
+      console.log('got filesystem', modelFileUrl, loader);
+    }
+  }
+});
+
+const renderer = new THREE.WebGLRenderer({
+  // canvas: document.getElementById('canvas'),
+  // alpha: true,
+  antialias: true,
+});
+// console.log('set size', window.innerWidth, window.innerHeight);
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.sortObjects = false;
+document.body.appendChild(renderer.domElement);
+
+const orbitControls = new THREE.OrbitControls(camera, renderer.domElement);
+orbitControls.screenSpacePanning = true;
+orbitControls.enableMiddleZoom = false;
+orbitControls.update();
+
+const realDateNow = (now => () => now())(Date.now);//() => 2000;
+function animate() {
+  if (rig) {
+    const positionOffset = Math.sin((realDateNow()%10000)/10000*Math.PI*2)*2;
+    const standFactor = 1.3412381613714757 - 0.3 + Math.sin((realDateNow()%2000)/2000*Math.PI*2)*0.3;
+    const rotationAngle = (realDateNow()%10000)/10000*Math.PI*2;
+
+    // rig.inputs.hmd.position = new Vector3(positionOffset, 0.6 + standFactor, 0);
+    rig.inputs.hmd.position = new Vector3(positionOffset, standFactor, 0);
+    rig.inputs.hmd.rotation = new Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), rotationAngle)
+      .multiply(new Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.sin((realDateNow()%2000)/2000*Math.PI*2)*-Math.PI*0.4));
+      // .premultiply(new Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.sin((Date.now()%2000)/2000*Math.PI*2)*Math.PI*0.2));
+
+    rig.inputs.rightGamepad.rotation = new Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), rotationAngle);
+    rig.inputs.rightGamepad.position = new Vector3(positionOffset, 0, 0).add(
+      new Vector3(-0.2, 0.9, -0.2/**Math.sin((realDateNow()%2000)/2000*Math.PI*2)*/)
+        .applyQuaternion(rig.inputs.rightGamepad.rotation)
+        //.applyQuaternion(z180Quaternion)
+      );
+    rig.inputs.leftGamepad.rotation = new Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), rotationAngle);
+    rig.inputs.leftGamepad.position = new Vector3(positionOffset, 0, 0).add(
+      new Vector3(0.2, 0.9, -0.2)
+        .applyQuaternion(rig.inputs.leftGamepad.rotation)
+        // .applyQuaternion(z180Quaternion)
+      );
+
+    rig.update();
+
+    meshes.eyes.position.copy(rig.outputs.eyes.position);
+    meshes.eyes.quaternion.copy(rig.outputs.eyes.rotation);
+
+    meshes.head.position.copy(rig.outputs.head.position);
+    meshes.head.quaternion.copy(rig.outputs.head.rotation);
+
+    meshes.chest.position.copy(rig.outputs.chest.position);
+    meshes.chest.quaternion.copy(rig.outputs.chest.rotation);
+
+    meshes.shoulderLeft.position.copy(rig.outputs.leftShoulder.position);
+    meshes.shoulderLeft.quaternion.copy(rig.outputs.leftShoulder.rotation);
+    meshes.upperArmLeft.position.copy(rig.outputs.leftUpperArm.position);
+    meshes.upperArmLeft.quaternion.copy(rig.outputs.leftUpperArm.rotation);
+    meshes.lowerArmLeft.position.copy(rig.outputs.leftLowerArm.position);
+    meshes.lowerArmLeft.quaternion.copy(rig.outputs.leftLowerArm.rotation);
+    meshes.handLeft.position.copy(rig.outputs.leftHand.position);
+    meshes.handLeft.quaternion.copy(rig.outputs.leftHand.rotation);
+
+    meshes.shoulderRight.position.copy(rig.outputs.rightShoulder.position);
+    meshes.shoulderRight.quaternion.copy(rig.outputs.rightShoulder.rotation);
+    meshes.upperArmRight.position.copy(rig.outputs.rightUpperArm.position);
+    meshes.upperArmRight.quaternion.copy(rig.outputs.rightUpperArm.rotation);
+    meshes.lowerArmRight.position.copy(rig.outputs.rightLowerArm.position);
+    meshes.lowerArmRight.quaternion.copy(rig.outputs.rightLowerArm.rotation);
+    meshes.handRight.position.copy(rig.outputs.rightHand.position);
+    meshes.handRight.quaternion.copy(rig.outputs.rightHand.rotation);
+
+    meshes.hips.position.copy(rig.outputs.hips.position);
+    meshes.hips.quaternion.copy(rig.outputs.hips.rotation);
+
+    meshes.upperLegLeft.position.copy(rig.outputs.leftUpperLeg.position);
+    meshes.upperLegLeft.quaternion.copy(rig.outputs.leftUpperLeg.rotation);
+    meshes.lowerLegLeft.position.copy(rig.outputs.leftLowerLeg.position);
+    meshes.lowerLegLeft.quaternion.copy(rig.outputs.leftLowerLeg.rotation);
+    meshes.footLeft.position.copy(rig.outputs.leftFoot.position);
+    meshes.footLeft.quaternion.copy(rig.outputs.leftFoot.rotation);
+
+    meshes.upperLegRight.position.copy(rig.outputs.rightUpperLeg.position);
+    meshes.upperLegRight.quaternion.copy(rig.outputs.rightUpperLeg.rotation);
+    meshes.lowerLegRight.position.copy(rig.outputs.rightLowerLeg.position);
+    meshes.lowerLegRight.quaternion.copy(rig.outputs.rightLowerLeg.rotation);
+    meshes.footRight.position.copy(rig.outputs.rightFoot.position);
+    meshes.footRight.quaternion.copy(rig.outputs.rightFoot.rotation);
+  }
+
+  renderer.render(scene, camera);
+}
+renderer.setAnimationLoop(animate);
+    </script>
+  </body>
+</html>

@@ -1,0 +1,29 @@
+{
+  "name": "exokit-browser",
+  "version": "0.0.1",
+  "description": "Exokit Browser",
+  "main": "index.js",
+  "dependencies": {
+    "express": "^4.17.1"
+  },
+  "devDependencies": {
+    "image-size": "^0.7.4",
+    "sharp": "^0.23.0",
+    "window-fetch": "0.0.13"
+  },
+  "scripts": {
+    "start": "sudo $(which node) index.js",
+    "build": "cd menu && react-scripts build",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/exokitxr/exoland.git"
+  },
+  "author": "Avaer Kazmer <a@modules.io>",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/exokitxr/exoland/issues"
+  },
+  "homepage": "https://github.com/exokitxr/exoland#readme"
+}
