@@ -426,17 +426,30 @@ const _loadModel = async (href, filename = href) => {
       return url;
     });
 
-    const modelFileUrl = filesystem.find(file => file.pathname === 'Assets/1Avatars/rachel gardner 1/rachel gardner NEW.fbx').url;
-    const loader = new THREE.FBXLoader(manager);
-    loader.load(modelFileUrl, object => {
-      _rigModel(object);
-    }, function onprogress() {
+    const modelFiles = filesystem.filter(file => /\.fbx/.test(file.pathname)).map(file => {
+      const pathnamePrefix = file.pathname.replace(/[^\/]+$/, '');
+      const numSiblingFiles = filesystem.filter(file => file.pathname.startsWith(pathnamePrefix)).length;
+      return {
+        file,
+        numSiblingFiles,
+      };
+    }).sort((a, b) => b.numSiblingFiles - a.numSiblingFiles).map(({file}) => file);
+    if (modelFiles.length > 0) {
+      const modelFile = modelFiles[0];
+      const modelFileUrl = modelFile.url;
+      const loader = new THREE.FBXLoader(manager);
+      loader.load(modelFileUrl, object => {
+        _rigModel(object);
+      }, function onprogress() {
 
-    }, function onerror(err) {
-      console.warn(err);
-    });
-    // window.loader = loader;
-    console.log('got filesystem', modelFileUrl, loader);
+      }, function onerror(err) {
+        console.warn(err);
+      });
+      // window.loader = loader;
+      // console.log('got filesystem', modelFileUrl, loader);
+    } else {
+      throw new Error('no model file in package');
+    }
   } else {
     throw new Error('unknown file type');
   }
