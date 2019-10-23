@@ -228,6 +228,11 @@ a:active {
       </div>
 
       <div class=iframe-wrapper id=iframe-wrapper></div>
+
+      <div class=buttons>
+        <a class=button id="enter-xr-button" style="display: none;">Enter XR</a>
+        <a class=button id="no-xr-button" disabled style="display: none;">No XR</a>
+      </div>
     </div>
     <script type=module>
 import Rig from './vrarmik/Rig.js';
@@ -527,6 +532,65 @@ function animate() {
   renderer.render(scene, camera);
 }
 renderer.setAnimationLoop(animate);
+
+let session = null;
+const enterXrButton = document.getElementById('enter-xr-button');
+const noXrButton = document.getElementById('no-xr-button');
+(async () => {
+  let result;
+  if (navigator.xr) {
+    try {
+      await navigator.xr.supportsSession('immersive-vr');
+      result = true;
+    } catch (err) {
+      result = false;
+    }
+  } else {
+    result = false;
+  }
+  if (result) {
+    console.log('xr available');
+    enterXrButton.style.display = null;
+  } else {
+    console.log('no xr');
+    noXrButton.style.display = null;
+  }
+})();
+enterXrButton.addEventListener('click', async () => {
+  session = await navigator.xr.requestSession({
+    exclusive: true,
+  });
+  session.layers = layers;
+
+  // console.log('request first frame');
+  session.requestAnimationFrame((timestamp, frame) => {
+    renderer.vr.setSession(session, {
+      frameOfReferenceType: 'stage',
+    });
+
+    const pose = frame.getViewerPose();
+    const viewport = session.baseLayer.getViewport(pose.views[0]);
+    // const width = viewport.width;
+    const height = viewport.height;
+    const fullWidth = (() => {
+      let result = 0;
+      for (let i = 0; i < pose.views.length; i++) {
+        result += session.baseLayer.getViewport(pose.views[i]).width;
+      }
+      return result;
+    })();
+    renderer.setSize(fullWidth, height);
+    renderer.setPixelRatio(1);
+
+    renderer.setAnimationLoop(null);
+
+    renderer.vr.enabled = true;
+    renderer.vr.setSession(session);
+    renderer.vr.setAnimationLoop(animate);
+
+    console.log('loaded root in XR');
+  });
+});
     </script>
   </body>
 </html>
