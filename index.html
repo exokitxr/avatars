@@ -322,6 +322,31 @@ scene.remove(meshes.upperLegRight);
 scene.remove(meshes.lowerLegRight);
 scene.remove(meshes.footRight); */
 
+const mirrorMesh = (() => {
+  const geometry = new THREE.PlaneBufferGeometry(1, 2);
+  const mesh = new THREE.Reflector(geometry, {
+    clipBias: 0.003,
+    textureWidth: 1024 * window.devicePixelRatio,
+    textureHeight: 2048 * window.devicePixelRatio,
+    color: 0x889999,
+    addColor: 0x300000,
+    recursion: 1
+  });
+  mesh.position.set(0, 1, -1);
+  /* mesh.onBeforeRender2 = () => {
+    if (model) {
+      model.visible = true;
+    }
+  };
+  mesh.onAfterRender2 = () => {
+    if (model) {
+      model.visible = false;
+    }
+  }; */
+  return mesh;
+})();
+scene.add(mirrorMesh);
+
 const z180Quaternion = new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), Math.PI);
 
 let rig = null;
