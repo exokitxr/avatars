@@ -126,10 +126,12 @@ a:hover {
 a:active {
   color: #1976d2;
 }
-.buttons {
+.body > .buttons {
   position: absolute;
   right: 30px;
   bottom: 30px;
+}
+.buttons {
   display: flex;
   margin: 5px 20px;
 }
@@ -226,6 +228,12 @@ a:active {
           <a href="https://exokitxr.github.io/avatar-models/model2.vrm" class="a-avatar">model2.vrm</a><br>
           <a href="https://exokitxr.github.io/avatar-models/model3.unitypackage" class="a-avatar">model3.unitypackage</a><br>
         </p>
+        <div class=buttons>
+          <label for="upload-file-button">
+            <a class=button>Upload file...</a>
+            <input type="file" id="upload-file-button" style="display: none">
+          </label>
+        </div>
       </div>
 
       <div class=iframe-wrapper id=iframe-wrapper></div>
