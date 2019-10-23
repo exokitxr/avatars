@@ -460,7 +460,7 @@ const realDateNow = (now => () => now())(Date.now);//() => 2000;
 function animate() {
   if (rig) {
     const positionOffset = Math.sin((realDateNow()%10000)/10000*Math.PI*2)*2;
-    const standFactor = 1.3412381613714757 - 0.3 + Math.sin((realDateNow()%2000)/2000*Math.PI*2)*0.3;
+    const standFactor = 1.3412381613714757 - 0.4 + Math.sin((realDateNow()%2000)/2000*Math.PI*2)*0.3;
     const rotationAngle = (realDateNow()%10000)/10000*Math.PI*2;
 
     // rig.inputs.hmd.position = new Vector3(positionOffset, 0.6 + standFactor, 0);
