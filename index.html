@@ -466,13 +466,13 @@ function animate() {
 
     rig.inputs.rightGamepad.rotation = new Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), rotationAngle);
     rig.inputs.rightGamepad.position = new Vector3(positionOffset, 0, 0).add(
-      new Vector3(-0.2, 0.9, 0/**Math.sin((realDateNow()%2000)/2000*Math.PI*2)*/)
+      new Vector3(-0.2, 0.9, -0.2/**Math.sin((realDateNow()%2000)/2000*Math.PI*2)*/)
         .applyQuaternion(rig.inputs.rightGamepad.rotation)
         //.applyQuaternion(z180Quaternion)
       );
     rig.inputs.leftGamepad.rotation = new Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), rotationAngle);
     rig.inputs.leftGamepad.position = new Vector3(positionOffset, 0, 0).add(
-      new Vector3(0.2, 0.9, 0)
+      new Vector3(0.2, 0.9, -0.2)
         .applyQuaternion(rig.inputs.leftGamepad.rotation)
         // .applyQuaternion(z180Quaternion)
       );
