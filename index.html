@@ -442,6 +442,26 @@ const _loadModel = async (href, filename = href) => {
   }
 };
 
+const _bindUploadFileButton = inputFileEl => {
+  inputFileEl.addEventListener('change', e => {
+    const {files} = e.target;
+    if (files.length === 1) {
+      const [file] = files;
+      const dataUrl = URL.createObjectURL(file);
+      _loadModel(dataUrl, file.name);
+    }
+
+    const {parentNode} = inputFileEl;
+    parentNode.removeChild(inputFileEl);
+    const newInputFileEl = document.createElement('input');
+    newInputFileEl.type = 'file';
+    newInputFileEl.id = 'upload-file-button';
+    newInputFileEl.style.display = 'none';
+    parentNode.appendChild(newInputFileEl);
+    _bindUploadFileButton(newInputFileEl);
+  });
+};
+_bindUploadFileButton(document.getElementById('upload-file-button'));
 window.document.addEventListener('dragover', e => {
   e.preventDefault();
 });
