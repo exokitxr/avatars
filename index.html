@@ -2,8 +2,198 @@
 <html>
   <head>
     <style>
+* {
+  box-sizing: border-box;
+}
 body {
   margin: 0;
+  background-color: #000;
+  /* color: #F5F5F5; */
+  font-family: -apple-system,BlinkMacSystemFont,"Segoe UI","Roboto","Oxygen","Ubuntu","Cantarell","Fira Sans","Droid Sans","Helvetica Neue",sans-serif;
+  // font-weight: 300;
+}
+.body {
+  display: flex;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+header {
+  position: absolute;
+  display: flex;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 50px;
+  background-color: #FFF;
+  box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.08);
+  align-items: center;
+  user-select: none;
+  z-index: 1;
+}
+header img {
+  width: 50px;
+  height: 50px;
+  margin: 0 20px;
+}
+header nav {
+  display: flex;
+  height: 100%;
+  padding: 0 10px;
+  letter-spacing: 0.9px;
+  align-items: center;
+  text-transform: uppercase;
+}
+header nav span {
+  display: flex;
+  height: 30px;
+  padding: 10px;
+  border-radius: 4px;
+  align-items: center;
+}
+header nav.selected span {
+  background-color: #5c6bc0;
+  color: #FFF;
+  cursor: default;
+}
+header nav:not(.selected):hover {
+  cursor: pointer;
+}
+header nav:not(.selected):hover span {
+  background-color: #EEE;
+}
+.examples {
+  width: 200px;
+  padding-top: 50px;
+  background-color: #FFF;
+}
+h1, h2, h3, h4, h5, h6, p {
+  margin: 20px 0;
+  padding: 0 20px;
+  font-weight: inherit;
+}
+li {
+  /* padding-left: 20px;
+  padding-right: 20px; */
+}
+.iframe-wrapper {
+  position: relative;
+  display: flex;
+  margin-top: 50px;
+  flex: 1;
+  background-color: #FFF;
+}
+.tabs {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+}
+.tabs .tab {
+  display: inline-flex;
+  margin: 5px 5px;
+  padding: 5px 10px;
+  background-color: #D8D8D8;
+  border-radius: 4px;
+  color: #000;
+  align-items: center;
+}
+.tabs .tab .text {
+  margin-right: 10px;
+  align-items: center;
+}
+.tabs .tab .close-x {
+  display: flex;
+  width: 20px;
+  height: 20px;
+  background-color: #ef5350;
+  color: #FFF;
+  justify-content: center;
+  align-items: center;
+}
+canvas {
+  width: 100% !important;
+  height: 100vh !important;
+  background-color: #f8f8f8;
+}
+a {
+  color: #AAA;
+  text-decoration: none;
+}
+a:hover {
+  color: #42a5f5;
+}
+a:active {
+  color: #1976d2;
+}
+.buttons {
+  position: absolute;
+  right: 30px;
+  bottom: 30px;
+  display: flex;
+  margin: 5px 20px;
+}
+.button {
+  display: inline-flex;
+  padding: 8px 20px;
+  border: 2px solid;
+  border-radius: 100px;
+  color: #5c6bc0;
+  cursor: pointer;
+}
+.button:not(:last-child) {
+  margin-right: 20px;
+}
+.button:not([disabled]):hover {
+  background-color: #5c6bc0;
+  border-color: #5c6bc0;
+  color: #FFF;
+}
+.button[disabled] {
+  color: #b71c1c;
+  cursor: auto;
+}
+#code-header:not(.open),
+#code-button:not(.open) .opened-text,
+#code-button.open .closed-text
+{
+  display: none;
+}
+.coming-soon {
+  color: #ccc;
+}
+.coming-soon-sub {
+  font-size: 10px;
+  display: block;
+}
+.header-link {
+  color: #666;
+}
+.code-header {
+  position: absolute;
+  top: 50px;
+  right: 0;
+  display: flex;
+  align-items: center;
+  width: 600px;
+  height: 32px;
+  padding: 5px;
+  font-size: 13px;
+  color: #4caf50;
+  background-color: #f2f3f5;
+}
+.code {
+  position: absolute;
+  top: 82px;
+  bottom: 0;
+  right: 0;
+  width: 600px;
+  border: 0;
+  border-left: 5px solid #f2f3f5;
+  outline: none;
+}
+.code:not(.open) {
+  display: none;
 }
     </style>
     <script src="three.js"></script>
@@ -14,6 +204,31 @@ body {
     <script src="gunzip.min.js"></script>
     <script src="ProgressivePromise.js"></script>
     <script src="untar.js"></script>
+  </head>
+  <body>
+    <div class=body>
+      <header>
+        <img src="logo.svg">
+        <nav class=selected><span>Viewer</span></nav>
+        <a href="https://docs.exokit.org/"><nav><span class="header-link">Documentation</span></nav></a>
+        <a href="https://browser.exokit.org"><nav><span class="header-link">Browser
+        </span></nav></a>
+        <a href="https://discord.gg/UgZDFZW"><nav><span class="coming-soon">Exoland
+          <p class="coming-soon-sub">Coming soon!</p>
+        </span></nav></a>
+      </header>
+
+      <div class=examples>
+        <h3>Examples</h3>
+        <p>
+          <a href="https://exokitxr.github.io/avatar-models/model.glb" class="a-avatar">model.glb</a><br>
+          <a href="https://exokitxr.github.io/avatar-models/model2.vrm" class="a-avatar">model2.vrm</a><br>
+          <a href="https://exokitxr.github.io/avatar-models/model3.unitypackage" class="a-avatar">model3.unitypackage</a><br>
+        </p>
+      </div>
+
+      <div class=iframe-wrapper id=iframe-wrapper></div>
+    </div>
     <script type=module>
 import Rig from './vrarmik/Rig.js';
 import {Vector3, Quaternion} from './vrarmik/Unity.js';
@@ -101,12 +316,6 @@ scene.remove(meshes.upperLegRight);
 scene.remove(meshes.lowerLegRight);
 scene.remove(meshes.footRight); */
 
-const models = {
-  glb: 'https://exokitxr.github.io/avatar-models/model.glb',
-  vrm: 'https://exokitxr.github.io/avatar-models/model2.vrm',
-  unitypackage: 'https://exokitxr.github.io/avatar-models/model3.unitypackage',
-};
-
 const z180Quaternion = new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), Math.PI);
 
 let rig = null;
@@ -123,11 +332,76 @@ const _rigModel = object => {
   scene.add(model);
   window.model = model;
 };
-new THREE.GLTFLoader().load(models.glb, object => {
-  _rigModel(object.scene);
-}, xhr => {}, err => {
-  console.warn(err);
-});
+const _loadModel = async (href, filename = href) => {
+  if (/\.(?:glb|vrm)$/.test(filename)) {
+    new THREE.GLTFLoader().load(href, object => {
+      _rigModel(object.scene);
+    }, xhr => {}, err => {
+      console.warn(err);
+    });
+  } else if (/\.unitypackage$/.test(filename)) {
+    const unitypackageRes = await fetch(href);
+    const arraybuffer = await unitypackageRes.arrayBuffer();
+    const inflatedArrayBuffer = new Zlib.Gunzip(new Uint8Array(arraybuffer)).decompress().buffer;
+    const files = await untar(inflatedArrayBuffer);
+    // console.log('got files', files);
+    // window.files = files;
+
+    const filesystem = [];
+    for (let j = 0; j < files.length; j++) {
+      const file = files[j];
+      const {name} = file;
+      const match = name.match(/^([a-zA-Z0-9]+)\/pathname$/);
+      if (match) {
+        const pathname = new TextDecoder().decode(await file.blob.arrayBuffer());
+        const id = match[1];
+        const assetFileName = `${id}/asset`;
+        const assetFile = files.find(file => file.name === assetFileName);
+        if (assetFile) {
+          const match = pathname.match(/([^\/]+)$/);
+          const filename = match[1];
+          const url = assetFile.getBlobUrl();
+          filesystem.push({
+            id,
+            pathname,
+            filename,
+            url,
+          });
+        }
+      }
+    }
+    // window.filesystem = filesystem;
+
+    const manager = new THREE.LoadingManager();
+    manager.setURLModifier(url => {
+      // console.log('load url', url);
+      const match = url.match(/([^\/]+)$/);
+      if (match) {
+        const filename = match[1];
+        const file = filesystem.find(file => file.filename === filename);
+        if (file) {
+          // console.log('replace url', url, file.url);
+          url = file.url;
+        }
+      }
+      return url;
+    });
+
+    const modelFileUrl = filesystem.find(file => file.pathname === 'Assets/1Avatars/rachel gardner 1/rachel gardner NEW.fbx').url;
+    const loader = new THREE.FBXLoader(manager);
+    loader.load(modelFileUrl, object => {
+      _rigModel(object);
+    }, function onprogress() {
+
+    }, function onerror(err) {
+      console.warn(err);
+    });
+    // window.loader = loader;
+    console.log('got filesystem', modelFileUrl, loader);
+  } else {
+    throw new Error('unknown file type');
+  }
+};
 
 window.document.addEventListener('dragover', e => {
   e.preventDefault();
@@ -142,63 +416,9 @@ window.document.addEventListener('drop', async e => {
   for (var i = 0; i < e.dataTransfer.items.length; i++) {
     if (e.dataTransfer.items[i].kind === 'file') {
       const file = e.dataTransfer.items[i].getAsFile();
-      const arraybuffer = await file.arrayBuffer();
-      const inflatedArrayBuffer = new Zlib.Gunzip(new Uint8Array(arraybuffer)).decompress().buffer;
-      const files = await untar(inflatedArrayBuffer);
-      // console.log('got files', files);
-      // window.files = files;
-
-      const filesystem = [];
-      for (let j = 0; j < files.length; j++) {
-        const file = files[j];
-        const {name} = file;
-        const match = name.match(/^([a-zA-Z0-9]+)\/pathname$/);
-        if (match) {
-          const pathname = new TextDecoder().decode(await file.blob.arrayBuffer());
-          const id = match[1];
-          const assetFileName = `${id}/asset`;
-          const assetFile = files.find(file => file.name === assetFileName);
-          if (assetFile) {
-            const match = pathname.match(/([^\/]+)$/);
-            const filename = match[1];
-            const url = assetFile.getBlobUrl();
-            filesystem.push({
-              id,
-              pathname,
-              filename,
-              url,
-            });
-          }
-        }
-      }
-      // window.filesystem = filesystem;
-
-      const manager = new THREE.LoadingManager();
-      manager.setURLModifier(url => {
-        // console.log('load url', url);
-        const match = url.match(/([^\/]+)$/);
-        if (match) {
-          const filename = match[1];
-          const file = filesystem.find(file => file.filename === filename);
-          if (file) {
-            // console.log('replace url', url, file.url);
-            url = file.url;
-          }
-        }
-        return url;
-      });
-
-      const modelFileUrl = filesystem.find(file => file.pathname === 'Assets/1Avatars/rachel gardner 1/rachel gardner NEW.fbx').url;
-      const loader = new THREE.FBXLoader(manager);
-      loader.load(modelFileUrl, object => {
-        _rigModel(object);
-      }, function onprogress() {
-
-      }, function onerror(err) {
-        console.warn(err);
-      });
-      window.loader = loader;
-      console.log('got filesystem', modelFileUrl, loader);
+      // console.log('got file', e.dataTransfer.items[i], file);
+      const dataUrl = URL.createObjectURL(file);
+      _loadModel(dataUrl, file.name);
     }
   }
 });
@@ -212,12 +432,24 @@ const renderer = new THREE.WebGLRenderer({
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(window.devicePixelRatio);
 renderer.sortObjects = false;
-document.body.appendChild(renderer.domElement);
+document.getElementById('iframe-wrapper').appendChild(renderer.domElement);
 
 const orbitControls = new THREE.OrbitControls(camera, renderer.domElement);
 orbitControls.screenSpacePanning = true;
 orbitControls.enableMiddleZoom = false;
 orbitControls.update();
+
+const aAvatars = document.querySelectorAll('.a-avatar');
+for (let i = 0; i < aAvatars.length; i++) {
+  const aAvatar = aAvatars[i];
+  aAvatar.addEventListener('click', e => {
+    e.preventDefault();
+
+    const {href} = aAvatar;
+    _loadModel(href);
+  });
+}
+_loadModel(aAvatars[0].href);
 
 const realDateNow = (now => () => now())(Date.now);//() => 2000;
 function animate() {
@@ -234,13 +466,13 @@ function animate() {
 
     rig.inputs.rightGamepad.rotation = new Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), rotationAngle);
     rig.inputs.rightGamepad.position = new Vector3(positionOffset, 0, 0).add(
-      new Vector3(-0.2, 0.9, -0.2/**Math.sin((realDateNow()%2000)/2000*Math.PI*2)*/)
+      new Vector3(-0.2, 0.9, 0/**Math.sin((realDateNow()%2000)/2000*Math.PI*2)*/)
         .applyQuaternion(rig.inputs.rightGamepad.rotation)
         //.applyQuaternion(z180Quaternion)
       );
     rig.inputs.leftGamepad.rotation = new Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), rotationAngle);
     rig.inputs.leftGamepad.position = new Vector3(positionOffset, 0, 0).add(
-      new Vector3(0.2, 0.9, -0.2)
+      new Vector3(0.2, 0.9, 0)
         .applyQuaternion(rig.inputs.leftGamepad.rotation)
         // .applyQuaternion(z180Quaternion)
       );
