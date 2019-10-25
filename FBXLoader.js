@@ -928,7 +928,7 @@ THREE.FBXLoader = ( function () {
 							// duplicate the bone here and and it as a child of the first bone
 							if ( subBone !== null ) {
 
-								bone.add( subBone );
+								// bone.add( subBone );
 
 							}
 
