@@ -207,6 +207,7 @@ a:active {
     <script src="gunzip.min.js"></script>
     <script src="ProgressivePromise.js"></script>
     <script src="untar.js"></script>
+    <script src="zip.js"></script>
   </head>
   <body>
     <div class=body>
@@ -227,6 +228,8 @@ a:active {
           <a href="https://exokitxr.github.io/avatar-models/model.glb" class="a-avatar">model.glb</a><br>
           <a href="https://exokitxr.github.io/avatar-models/model2.vrm" class="a-avatar">model2.vrm</a><br>
           <a href="https://exokitxr.github.io/avatar-models/model3.unitypackage" class="a-avatar">model3.unitypackage</a><br>
+          <a href="https://exokitxr.github.io/avatar-models/model4.zip" class="a-avatar">model4.zip</a><br>
+          <a href="https://exokitxr.github.io/avatar-models/model5.fbx" class="a-avatar">model5.fbx</a><br>
         </p>
         <div class=buttons>
           <label for="upload-file-button">
@@ -261,7 +264,7 @@ const directionalLight = new THREE.DirectionalLight(0xFFFFFF, 1);
 directionalLight.position.set(0.5, 1, 0.5);
 scene.add(directionalLight);
 
-/* const directionalLight2 = new THREE.DirectionalLight(0xFFFFFF, 1);
+/* const directionalLight2 = new THREE.DirectionalLight(0xFFFFFF, 4);
 directionalLight2.position.set(0, -0.25, -0.25);
 scene.add(directionalLight2); */
 
@@ -371,14 +374,119 @@ const _rigModel = object => {
   scene.add(model);
   window.model = model;
 };
-const _loadModel = async (href, filename = href) => {
-  if (/\.(?:glb|vrm)$/.test(filename)) {
+const _getFileType = filename => {
+  if (/\.(?:gltf|glb|vrm)$/.test(filename)) {
+    return 'gltf';
+  } else if (/\.fbx$/.test(filename)) {
+    return 'fbx';
+  } else if (/\.(?:tar\.gz|tgz|unitypackage)$/.test(filename)) {
+    return 'tgz';
+  } else if (/\.(?:zip)$/.test(filename)) {
+    return 'zip';
+  } else {
+    return null;
+  }
+};
+const _pathname2Filename = pathname => {
+  const match = pathname.match(/([^\/]+)$/);
+  return match && match[1];
+};
+const _loadModelFilesystem = filesystem => {
+  const manager = new THREE.LoadingManager();
+  manager.setURLModifier(url => {
+    // console.log('load url', url);
+    const match = url.match(/([^\/]+)$/);
+    if (match) {
+      const filename = match[1];
+      const file = filesystem.find(file => file.filename === filename);
+      if (file) {
+        // console.log('replace url', url, file.url);
+        url = file.url;
+      }
+    }
+    return url;
+  });
+
+  const modelFiles = filesystem.filter(file => /\.(?:fbx|gltf|glb)/.test(file.pathname)).map(file => {
+    const pathnamePrefix = file.pathname.replace(/[^\/]+$/, '');
+    const numSiblingFiles = filesystem.filter(file => file.pathname.startsWith(pathnamePrefix)).length;
+    return {
+      file,
+      numSiblingFiles,
+    };
+  }).sort((a, b) => b.numSiblingFiles - a.numSiblingFiles).map(({file}) => file);
+  if (modelFiles.length > 0) {
+    const modelFile = modelFiles[0];
+    // console.log('got model file', modelFile);
+    const modelFileUrl = modelFile.url;
+    if (/\.fbx$/.test(modelFile.pathname)) {
+      new THREE.FBXLoader(manager).load(modelFileUrl, object => {
+        _rigModel(object);
+      }, function onprogress() {}, function onerror(err) {
+        console.warn(err);
+      });
+    } else {
+      new THREE.GLTFLoader(manager).load(modelFileUrl, object => {
+        _rigModel(object.scene);
+      }, xhr => {}, err => {
+        console.warn(err);
+      });
+    }
+  } else {
+    throw new Error('no model file in package');
+  }
+};
+const _loadModelUrl = async (href, filename = href) => {
+  const fileType = _getFileType(filename);
+  if (fileType === 'gltf') {
     new THREE.GLTFLoader().load(href, object => {
       _rigModel(object.scene);
     }, xhr => {}, err => {
       console.warn(err);
     });
-  } else if (/\.unitypackage$/.test(filename)) {
+  } else if (fileType === 'fbx') {
+    new THREE.FBXLoader().load(href, object => {
+      _rigModel(object);
+    }, xhr => {}, err => {
+      console.warn(err);
+    });
+  } else if (fileType === 'zip') {
+    const unitypackageRes = await fetch(href);
+    const blob = await unitypackageRes.blob();
+    zip.createReader(new zip.BlobReader(blob), function(reader) {
+      reader.getEntries(async function(entries) {
+        const filesystem = [];
+        for (let i = 0; i < entries.length; i++) {
+          const entry = entries[i];
+          const pathname = entry.filename;
+          const filename = _pathname2Filename(pathname);
+          const blob = await new Promise((accept, reject) => {
+            entry.getData(new zip.BlobWriter('application/octet-stream'), function(blob) {
+              accept(blob);
+            }, function(current, total) {
+              // onprogress callback
+            });
+          });
+          const url = URL.createObjectURL(blob);
+          filesystem.push({
+            pathname,
+            filename,
+            url,
+          });
+          // console.log('got blob', entry, blob, pathname, filename, url);
+        }
+        // console.log('got filesystem', filesystem);
+        _loadModelFilesystem(filesystem);
+
+        /* // close the zip reader
+        reader.close(function() {
+          // onclose callback
+        }); */
+      });
+    }, function(err) {
+      console.warn(err);
+    });
+  } else if (fileType === 'tgz') {
     const unitypackageRes = await fetch(href);
     const arraybuffer = await unitypackageRes.arrayBuffer();
     const inflatedArrayBuffer = new Zlib.Gunzip(new Uint8Array(arraybuffer)).decompress().buffer;
@@ -397,11 +505,9 @@ const _loadModel = async (href, filename = href) => {
         const assetFileName = `${id}/asset`;
         const assetFile = files.find(file => file.name === assetFileName);
         if (assetFile) {
-          const match = pathname.match(/([^\/]+)$/);
-          const filename = match[1];
+          const filename = _pathname2Filename(pathname);
           const url = assetFile.getBlobUrl();
           filesystem.push({
-            id,
             pathname,
             filename,
             url,
@@ -409,49 +515,9 @@ const _loadModel = async (href, filename = href) => {
         }
       }
     }
-    // window.filesystem = filesystem;
-
-    const manager = new THREE.LoadingManager();
-    manager.setURLModifier(url => {
-      // console.log('load url', url);
-      const match = url.match(/([^\/]+)$/);
-      if (match) {
-        const filename = match[1];
-        const file = filesystem.find(file => file.filename === filename);
-        if (file) {
-          // console.log('replace url', url, file.url);
-          url = file.url;
-        }
-      }
-      return url;
-    });
-
-    const modelFiles = filesystem.filter(file => /\.fbx/.test(file.pathname)).map(file => {
-      const pathnamePrefix = file.pathname.replace(/[^\/]+$/, '');
-      const numSiblingFiles = filesystem.filter(file => file.pathname.startsWith(pathnamePrefix)).length;
-      return {
-        file,
-        numSiblingFiles,
-      };
-    }).sort((a, b) => b.numSiblingFiles - a.numSiblingFiles).map(({file}) => file);
-    if (modelFiles.length > 0) {
-      const modelFile = modelFiles[0];
-      const modelFileUrl = modelFile.url;
-      const loader = new THREE.FBXLoader(manager);
-      loader.load(modelFileUrl, object => {
-        _rigModel(object);
-      }, function onprogress() {
-
-      }, function onerror(err) {
-        console.warn(err);
-      });
-      // window.loader = loader;
-      // console.log('got filesystem', modelFileUrl, loader);
-    } else {
-      throw new Error('no model file in package');
-    }
+    _loadModelFilesystem(filesystem);
   } else {
-    throw new Error('unknown file type');
+    throw new Error(`unknown file type: ${filename} (${fileType})`);
   }
 };
 
@@ -461,7 +527,7 @@ const _bindUploadFileButton = inputFileEl => {
     if (files.length === 1) {
       const [file] = files;
       const dataUrl = URL.createObjectURL(file);
-      _loadModel(dataUrl, file.name);
+      _loadModelUrl(dataUrl, file.name);
     }
 
     const {parentNode} = inputFileEl;
@@ -490,7 +556,7 @@ window.document.addEventListener('drop', async e => {
       const file = e.dataTransfer.items[i].getAsFile();
       // console.log('got file', e.dataTransfer.items[i], file);
       const dataUrl = URL.createObjectURL(file);
-      _loadModel(dataUrl, file.name);
+      _loadModelUrl(dataUrl, file.name);
     }
   }
 });
@@ -500,7 +566,10 @@ const renderer = new THREE.WebGLRenderer({
   // alpha: true,
   antialias: true,
 });
-// console.log('set size', window.innerWidth, window.innerHeight);
+/* renderer.gammaOutput = true;
+renderer.gammaFactor = 2.2;
+renderer.physicallyCorrectLights = true;
+renderer.toneMappingExposure = 1; */
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(window.devicePixelRatio);
 renderer.sortObjects = false;
@@ -518,36 +587,36 @@ for (let i = 0; i < aAvatars.length; i++) {
     e.preventDefault();
 
     const {href} = aAvatar;
-    _loadModel(href);
+    _loadModelUrl(href);
   });
 }
-_loadModel(aAvatars[0].href);
+_loadModelUrl(aAvatars[0].href);
 
 const realDateNow = (now => () => now())(Date.now);//() => 2000;
 function animate() {
   if (rig) {
     const positionOffset = Math.sin((realDateNow()%10000)/10000*Math.PI*2)*2;
-    const standFactor = 1.3412381613714757 - 0.4 + Math.sin((realDateNow()%2000)/2000*Math.PI*2)*0.3;
+    const standFactor = rig.height - 0.1*rig.height + Math.sin((realDateNow()%2000)/2000*Math.PI*2)*0.2*rig.height;
     const rotationAngle = (realDateNow()%10000)/10000*Math.PI*2;
 
     // rig.inputs.hmd.position = new Vector3(positionOffset, 0.6 + standFactor, 0);
     rig.inputs.hmd.position = new Vector3(positionOffset, standFactor, 0);
     rig.inputs.hmd.rotation = new Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), rotationAngle)
-      .multiply(new Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.sin((realDateNow()%2000)/2000*Math.PI*2)*-Math.PI*0.4));
+      .multiply(new Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.sin((realDateNow()%2000)/2000*Math.PI*2)*Math.PI*0.25));
       // .premultiply(new Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.sin((Date.now()%2000)/2000*Math.PI*2)*Math.PI*0.2));
 
     rig.inputs.rightGamepad.rotation = new Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), rotationAngle);
-    rig.inputs.rightGamepad.position = new Vector3(positionOffset, 0, 0).add(
-      new Vector3(-0.2, 0.9, -0.2/**Math.sin((realDateNow()%2000)/2000*Math.PI*2)*/)
-        .applyQuaternion(rig.inputs.rightGamepad.rotation)
-        //.applyQuaternion(z180Quaternion)
-      );
+    rig.inputs.rightGamepad.position = new Vector3(positionOffset, rig.height*0.7, 0).add(
+      new Vector3(-rig.shoulderWidth/2, 0, 0).applyQuaternion(rig.inputs.rightGamepad.rotation)
+    ).add(
+      new Vector3(-0.1, 0, -1).normalize().multiplyScalar(rig.rightArmLength*0.7).applyQuaternion(rig.inputs.rightGamepad.rotation)
+    );
     rig.inputs.leftGamepad.rotation = new Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), rotationAngle);
-    rig.inputs.leftGamepad.position = new Vector3(positionOffset, 0, 0).add(
-      new Vector3(0.2, 0.9, -0.2)
-        .applyQuaternion(rig.inputs.leftGamepad.rotation)
-        // .applyQuaternion(z180Quaternion)
-      );
+    rig.inputs.leftGamepad.position = new Vector3(positionOffset, rig.height*0.7, 0).add(
+      new Vector3(rig.shoulderWidth/2, 0, 0).applyQuaternion(rig.inputs.leftGamepad.rotation)
+    ).add(
+      new Vector3(0.1, 0, -1).normalize().multiplyScalar(rig.leftArmLength*0.7).applyQuaternion(rig.inputs.leftGamepad.rotation)
+    );
 
     rig.update();
 
