@@ -595,28 +595,43 @@ _loadModelUrl(aAvatars[0].href);
 const realDateNow = (now => () => now())(Date.now);//() => 2000;
 function animate() {
   if (rig) {
-    const positionOffset = Math.sin((realDateNow()%10000)/10000*Math.PI*2)*2;
-    const standFactor = rig.height - 0.1*rig.height + Math.sin((realDateNow()%2000)/2000*Math.PI*2)*0.2*rig.height;
-    const rotationAngle = (realDateNow()%10000)/10000*Math.PI*2;
+    if (renderer.vr.enabled) {
+      const vrCamera = renderer.vr.enabled ? renderer.vr.getCamera(camera).cameras[0] : camera;
+      vrCamera.matrixWorld.decompose(vrCamera.position, vrCamera.quaternion, vrCamera.scale);
+      const gamepads = navigator.getGamepads();
 
-    // rig.inputs.hmd.position = new Vector3(positionOffset, 0.6 + standFactor, 0);
-    rig.inputs.hmd.position = new Vector3(positionOffset, standFactor, 0);
-    rig.inputs.hmd.rotation = new Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), rotationAngle)
-      .multiply(new Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.sin((realDateNow()%2000)/2000*Math.PI*2)*Math.PI*0.25));
-      // .premultiply(new Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.sin((Date.now()%2000)/2000*Math.PI*2)*Math.PI*0.2));
+      rig.inputs.hmd.position = vrCamera.position;
+      rig.inputs.hmd.rotation = vrCamera.quaternion;
 
-    rig.inputs.rightGamepad.rotation = new Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), rotationAngle);
-    rig.inputs.rightGamepad.position = new Vector3(positionOffset, rig.height*0.7, 0).add(
-      new Vector3(-rig.shoulderWidth/2, 0, 0).applyQuaternion(rig.inputs.rightGamepad.rotation)
-    ).add(
-      new Vector3(-0.1, 0, -1).normalize().multiplyScalar(rig.rightArmLength*0.7).applyQuaternion(rig.inputs.rightGamepad.rotation)
-    );
-    rig.inputs.leftGamepad.rotation = new Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), rotationAngle);
-    rig.inputs.leftGamepad.position = new Vector3(positionOffset, rig.height*0.7, 0).add(
-      new Vector3(rig.shoulderWidth/2, 0, 0).applyQuaternion(rig.inputs.leftGamepad.rotation)
-    ).add(
-      new Vector3(0.1, 0, -1).normalize().multiplyScalar(rig.leftArmLength*0.7).applyQuaternion(rig.inputs.leftGamepad.rotation)
-    );
+      rig.inputs.leftGamepad.rotation = new THREE.Quaternion().fromArray(gamepads[1].pose.orientation);
+      rig.inputs.leftGamepad.position = new THREE.Vector3().fromArray(gamepads[1].pose.position);
+
+      rig.inputs.rightGamepad.rotation = new THREE.Quaternion().fromArray(gamepads[0].pose.orientation);
+      rig.inputs.rightGamepad.position = new THREE.Vector3().fromArray(gamepads[0].pose.position);
+    } else {
+      const positionOffset = Math.sin((realDateNow()%10000)/10000*Math.PI*2)*2;
+      const standFactor = rig.height - 0.1*rig.height + Math.sin((realDateNow()%2000)/2000*Math.PI*2)*0.2*rig.height;
+      const rotationAngle = (realDateNow()%10000)/10000*Math.PI*2;
+
+      // rig.inputs.hmd.position = new Vector3(positionOffset, 0.6 + standFactor, 0);
+      rig.inputs.hmd.position = new Vector3(positionOffset, standFactor, 0);
+      rig.inputs.hmd.rotation = new Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), rotationAngle)
+        .multiply(new Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.sin((realDateNow()%2000)/2000*Math.PI*2)*Math.PI*0.25));
+        // .premultiply(new Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.sin((Date.now()%2000)/2000*Math.PI*2)*Math.PI*0.2));
+
+      rig.inputs.rightGamepad.rotation = new Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), rotationAngle);
+      rig.inputs.rightGamepad.position = new Vector3(positionOffset, rig.height*0.7, 0).add(
+        new Vector3(-rig.shoulderWidth/2, 0, 0).applyQuaternion(rig.inputs.rightGamepad.rotation)
+      ).add(
+        new Vector3(-0.1, 0, -1).normalize().multiplyScalar(rig.rightArmLength*0.7).applyQuaternion(rig.inputs.rightGamepad.rotation)
+      );
+      rig.inputs.leftGamepad.rotation = new Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), rotationAngle);
+      rig.inputs.leftGamepad.position = new Vector3(positionOffset, rig.height*0.7, 0).add(
+        new Vector3(rig.shoulderWidth/2, 0, 0).applyQuaternion(rig.inputs.leftGamepad.rotation)
+      ).add(
+        new Vector3(0.1, 0, -1).normalize().multiplyScalar(rig.leftArmLength*0.7).applyQuaternion(rig.inputs.leftGamepad.rotation)
+      );
+    }
 
     rig.update();
 
