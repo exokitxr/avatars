@@ -15,10 +15,24 @@ const _localizeMatrixWorld = bone => {
     _localizeMatrixWorld(bone.children[i]);
   }
 };
+const _findBoneDeep = (bones, boneName) => {
+  for (let i = 0; i < bones.length; i++) {
+    const bone = bones[i];
+    if (bone.name === boneName) {
+      return bone;
+    } else {
+      const deepBone = _findBoneDeep(bone.children, boneName);
+      if (deepBone) {
+        return deepBone;
+      }
+    }
+  }
+  return null;
+};
 const _copySkeleton = (src, dst) => {
   for (let i = 0; i < src.bones.length; i++) {
     const srcBone = src.bones[i];
-    const dstBone = dst.bones.find(bone => bone.name === srcBone.name);
+    const dstBone = _findBoneDeep(dst.bones, srcBone.name);
     dstBone.matrixWorld.copy(srcBone.matrixWorld);
   }
 
@@ -33,37 +47,27 @@ class Rig {
     GameObject.clearAll();
 
     model.updateMatrixWorld(true);
-    let skeleton;
-    let poseSkeleton;
+    const skinnedMeshes = [];
 	  model.traverse(o => {
 	    if (o.isMesh) {
 	      o.frustumCulled = false;
 	    }
 	    if (o.isSkinnedMesh) {
-        if (o.skeleton.bones.length > 0) {
-          if (o.skeleton.bones[0].parent && !skeleton) {
-            if (!skeleton) {
-              skeleton = o.skeleton;
-              o.bind(skeleton);
-
-              if (skeleton && poseSkeleton) {
-                _copySkeleton(poseSkeleton, skeleton);
-                o.bind(skeleton);
-              }
-            }
-          } else {
-            if (!poseSkeleton) {
-              poseSkeleton = o.skeleton;
-
-              if (skeleton && poseSkeleton) {
-                _copySkeleton(poseSkeleton, skeleton);
-                o.bind(skeleton);
-              }
-            }
-          }
-        }
+        skinnedMeshes.push(o);
 	    }
 	  });
+    skinnedMeshes.sort((a, b) => b.skeleton.bones.length - a.skeleton.bones.length);
+    const skeletonSkinnedMesh = skinnedMeshes.find(o => o.skeleton.bones[0].parent) || null;
+    const skeleton = skeletonSkinnedMesh && skeletonSkinnedMesh.skeleton;
+    if (skeleton) {
+      skeletonSkinnedMesh.bind(skeleton);
+    }
+    const poseSkeletonSkinnedMesh = skeleton ? skinnedMeshes.find(o => o.skeleton !== skeleton && o.skeleton.bones.length >= skeleton.bones.length) : null;
+    const poseSkeleton = poseSkeletonSkinnedMesh && poseSkeletonSkinnedMesh.skeleton;
+    if (poseSkeleton) {
+      _copySkeleton(poseSkeleton, skeleton);
+      poseSkeletonSkinnedMesh.bind(skeleton);
+    }
 
     const _getTailBones = skeleton => {
       const result = [];
@@ -289,7 +293,27 @@ class Rig {
 	  const Right_ankle = _findFoot(false);
 	  const Right_knee = Right_ankle.parent;
 	  const Right_leg = Right_knee.parent;
-	  // console.log('got left hand', {leftEye, rightEye, head, neck, chest, hips, leftHand, leftLowerArm, leftUpperArm, rightHand, rightLowerArm, rightUpperArm, leftFoot, leftKnee, leftLeg, rightFoot, rightKnee, rightLeg});
+    const hairBones = tailBones.filter(bone => /hair/i.test(bone.name)).map(bone => {
+      for (; bone; bone = bone.parent) {
+        if (bone.parent === Head) {
+          return bone;
+        }
+      }
+      return null;
+    }).filter(bone => bone);
+    hairBones.forEach(rootHairBone => {
+      rootHairBone.traverse(hairBone => {
+        hairBone.length = hairBone.position.length();
+        hairBone.worldParentOffset = hairBone.getWorldPosition(new Vector3()).sub(hairBone.parent.getWorldPosition(new Vector3()));
+        hairBone.initialWorldQuaternion = hairBone.getWorldQuaternion(new Quaternion());
+        hairBone.velocity = new Vector3();
+        if (hairBone !== rootHairBone) {
+          hairBone._updateMatrixWorld = hairBone.updateMatrixWorld;
+          hairBone.updateMatrixWorld = () => {};
+        }
+      });
+    });
+    this.hairBones = hairBones;
     const modelBones = {
 	    Hips,
 	    Spine,
@@ -316,6 +340,11 @@ class Rig {
 	    Right_ankle,
 	  };
 	  this.modelBones = modelBones;
+    /* for (const k in modelBones) {
+      if (!modelBones[k]) {
+        console.warn('missing bone', k);
+      }
+    } */
 
     const _findArmature = bone => {
       for (; bone; bone = bone.parent) {
@@ -507,15 +536,12 @@ class Rig {
     }
 	  model.updateMatrixWorld(true);
 
-	  model.traverse(o => {
-	    if (o.isSkinnedMesh) {
-	      for (const k in modelBones) {
-	        if (!modelBones[k].initialQuaternion) {
-	          modelBones[k].initialQuaternion = modelBones[k].quaternion.clone();
-	        }
-	      }
-	    }
-	  });
+    for (let i = 0; i < skeleton.bones.length; i++) {
+      const bone = skeleton.bones[i];
+      if (!bone.initialQuaternion) {
+        bone.initialQuaternion = bone.quaternion.clone();
+      }
+    }
 
 	  const _getOffset = (bone, parent = bone.parent) => bone.getWorldPosition(new Vector3()).sub(parent.getWorldPosition(new Vector3()));
 	  const _averagePoint = points => {
@@ -639,6 +665,7 @@ class Rig {
 	    Right_knee: this.outputs.leftLowerLeg,
 	    Right_ankle: this.outputs.leftFoot,
 	  };
+    this.lastTimestamp = Date.now();
 
 	  GameObject.startAll();
 	}
@@ -744,6 +771,50 @@ class Rig {
       }
       modelBone.updateMatrixWorld();
     }
+
+    const now = Date.now();
+    const timeDiff = Math.min(now - this.lastTimestamp, 1000);
+    this.lastTimestamp = now;
+    const _processHairBone = (hairBone, children) => {
+      const p = new Vector3().setFromMatrixPosition(hairBone.matrixWorld);
+      // console.log('proces', hairBone.name, p.toArray());
+      for (let i = 0; i < children.length; i++) {
+        const childHairBone = children[i];
+
+        if (childHairBone.isBone) {
+          const px = new Vector3().setFromMatrixPosition(childHairBone.matrixWorld);
+          const hairDistance = px.distanceTo(p);
+          const hairDirection = px.clone().sub(p).normalize();
+
+          if (hairDistance > childHairBone.length * 2) {
+            px.copy(p).add(hairDirection.clone().multiplyScalar(childHairBone.length * 2));
+          }
+
+          const l = childHairBone.velocity.length();
+          if (l > 0.05) {
+            childHairBone.velocity.multiplyScalar(0.05/l);
+          }
+
+          childHairBone.velocity.add(hairDirection.clone().multiplyScalar(-(hairDistance - childHairBone.length) * 0.1 * timeDiff/32));
+          childHairBone.velocity.add(new Vector3(0, -9.8, 0).multiplyScalar(0.0002 * timeDiff/32));
+          childHairBone.velocity.add(childHairBone.worldParentOffset.clone().applyQuaternion(this.modelBones.Hips.quaternion).multiplyScalar(0.03 * timeDiff/32));
+          childHairBone.velocity.lerp(new Vector3(), 0.2 * timeDiff/32);
+
+          const p2 = px.clone().add(childHairBone.velocity.clone().multiplyScalar(1));
+          const q2 = childHairBone.initialWorldQuaternion.clone().premultiply(
+            new Quaternion().setFromRotationMatrix(new THREE.Matrix4().lookAt(
+              new Vector3(0, 0, 0),
+              hairDirection,
+              new Vector3(0, 0, -1).applyQuaternion(this.modelBones.Hips.quaternion),
+            ))
+          );
+          const s2 = new Vector3(1, 1, 1);
+          childHairBone.matrixWorld.compose(p2, q2, s2);
+          _processHairBone(childHairBone, childHairBone.children);
+        }
+      }
+    };
+    _processHairBone(this.modelBones.Head, this.hairBones);
 	}
 }
 export default Rig;
