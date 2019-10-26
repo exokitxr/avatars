@@ -293,27 +293,6 @@ class Rig {
 	  const Right_ankle = _findFoot(false);
 	  const Right_knee = Right_ankle.parent;
 	  const Right_leg = Right_knee.parent;
-    const hairBones = tailBones.filter(bone => /hair/i.test(bone.name)).map(bone => {
-      for (; bone; bone = bone.parent) {
-        if (bone.parent === Head) {
-          return bone;
-        }
-      }
-      return null;
-    }).filter(bone => bone);
-    hairBones.forEach(rootHairBone => {
-      rootHairBone.traverse(hairBone => {
-        hairBone.length = hairBone.position.length();
-        hairBone.worldParentOffset = hairBone.getWorldPosition(new Vector3()).sub(hairBone.parent.getWorldPosition(new Vector3()));
-        hairBone.initialWorldQuaternion = hairBone.getWorldQuaternion(new Quaternion());
-        hairBone.velocity = new Vector3();
-        if (hairBone !== rootHairBone) {
-          hairBone._updateMatrixWorld = hairBone.updateMatrixWorld;
-          hairBone.updateMatrixWorld = () => {};
-        }
-      });
-    });
-    this.hairBones = hairBones;
     const modelBones = {
 	    Hips,
 	    Spine,
@@ -373,22 +352,50 @@ class Rig {
 	  let flipZ = eyeDirection.z < 0;
     const armatureDirection = new THREE.Vector3(0, 1, 0).applyQuaternion(armature.quaternion);
     const flipY = armatureDirection.z < -0.5;
+    const legDirection = new Vector3(0, 0, -1).applyQuaternion(Left_leg.getWorldQuaternion(new Quaternion()).premultiply(armature.quaternion.clone().inverse()));
+    const flipLeg = legDirection.y < 0.5;
     const scaleFactor = Head.getWorldPosition(new Vector3())
       .distanceTo(Left_ankle.getWorldPosition(new Vector3())) / Math.abs(armature.scale.y) > 100 ? 100 : 1;
 	  console.log('flip', flipZ, flipY, scaleFactor, eyeDirection.toArray().join(','), armatureDirection.toArray().join(','));
 	  this.flipZ = flipZ;
 	  this.flipY = flipY;
+    this.flipLeg = flipLeg;
     this.scaleFactor = scaleFactor;
 
     const armatureQuaternion = armature.quaternion.clone();
     const armatureMatrixInverse = new THREE.Matrix4().getInverse(armature.matrixWorld);
+    const armatureScale = armature.scale.clone();
     armature.position.set(0, 0, 0);
     armature.quaternion.set(0, 0, 0, 1);
     armature.scale.set(1, 1, 1).divideScalar(this.scaleFactor);
     armature.updateMatrix();
 
+    const hairBones = tailBones.filter(bone => /hair/i.test(bone.name)).map(bone => {
+      for (; bone; bone = bone.parent) {
+        if (bone.parent === Head) {
+          return bone;
+        }
+      }
+      return null;
+    }).filter(bone => bone);
+    hairBones.forEach(rootHairBone => {
+      rootHairBone.traverse(hairBone => {
+        hairBone.length = hairBone.position.length();
+        hairBone.worldParentOffset = hairBone.getWorldPosition(new Vector3()).sub(hairBone.parent.getWorldPosition(new Vector3())).divide(armatureScale);
+        hairBone.initialWorldQuaternion = hairBone.getWorldQuaternion(new Quaternion());
+        hairBone.velocity = new Vector3();
+        if (hairBone !== rootHairBone) {
+          hairBone._updateMatrixWorld = hairBone.updateMatrixWorld;
+          hairBone.updateMatrixWorld = () => {};
+        }
+      });
+    });
+    this.hairBones = hairBones;
+
     const preRotations = {
       Hips: new Quaternion(),
+      Hip: new Quaternion(),
+      J_Bip_C_Hips: new Quaternion(),
       Left_arm: new Quaternion(),
       Right_arm: new Quaternion(),
       Left_elbow: new Quaternion(),
@@ -399,8 +406,6 @@ class Rig {
       Right_knee: new Quaternion(), */
       Upper_legL: new Quaternion(),
       Upper_legR: new Quaternion(),
-      ShoulderR: new Quaternion(),
-      ShoulderL: new Quaternion(),
       Upper_armL: new Quaternion(),
       Upper_armR: new Quaternion(),
       Lower_armR: new Quaternion(),
@@ -409,7 +414,9 @@ class Rig {
       HandR: new Quaternion(),
     };
     if (flipY) {
-      preRotations.Hips.premultiply(new Quaternion().setFromAxisAngle(new Vector3(1, 0, 0), -Math.PI/2));
+      ['Hips', 'Hip', 'J_Bip_C_Hips'].forEach(k => {
+        preRotations[k].premultiply(new Quaternion().setFromAxisAngle(new Vector3(1, 0, 0), -Math.PI/2));
+      });
     }
     if (!flipZ) {
     	// preRotations.Left_arm.premultiply(new Quaternion().setFromAxisAngle(new Vector3(0, 0, 1), Math.PI*0.25));
@@ -417,7 +424,14 @@ class Rig {
       // preRotations.Upper_armL.premultiply(new Quaternion().setFromAxisAngle(new Vector3(0, 0, 1), Math.PI*0.25));
       // preRotations.Upper_armR.premultiply(new Quaternion().setFromAxisAngle(new Vector3(0, 0, 1),  -Math.PI*0.25));
     } else {
-    	preRotations.Hips.premultiply(new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), Math.PI));
+      ['Hips', 'Hip', 'J_Bip_C_Hips'].forEach(k => {
+        preRotations[k].premultiply(new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), Math.PI));
+      });
+    }
+    if (flipLeg) {
+      ['Upper_legR', 'Upper_legL'].forEach(k => {
+        preRotations[k].premultiply(new Quaternion().setFromAxisAngle(new Vector3(1, 0, 0), Math.PI/2));
+      });
     }
 
     const qr = new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), -Math.PI/2)
@@ -472,13 +486,11 @@ class Rig {
       .multiply(ql.clone())
       .premultiply(ql2.clone().inverse());
 
-    preRotations.ShoulderR.multiply(armatureQuaternion);
     preRotations.Upper_armR
       .multiply(qr.clone().inverse())
     preRotations.Lower_armR
       .multiply(qr.clone())
       .premultiply(qr2.clone().inverse())
-    preRotations.ShoulderL.multiply(armatureQuaternion);
     preRotations.Upper_armL
       .multiply(ql.clone().inverse())
     preRotations.Lower_armL
@@ -493,7 +505,7 @@ class Rig {
     for (const k in preRotations) {
       preRotations[k].inverse();
     }
-	  fixSkeletonZForward(skeleton.bones[0], {
+	  fixSkeletonZForward(armature.children[0], {
 	    preRotations,
 	  });
 	  model.traverse(o => {
@@ -581,7 +593,6 @@ class Rig {
 
 		const rigObject = new GameObject('rig');
 		this.poseManager = rigObject.AddComponent(PoseManager);
-		this.poseManager.flipZ = flipZ;
 		this.poseManager.flipY = flipY;
 		this.shoulderTransforms = rigObject.AddComponent(ShoulderTransforms);
 		this.legsManager = rigObject.AddComponent(LegsManager);
@@ -667,6 +678,10 @@ class Rig {
 	  };
     this.lastTimestamp = Date.now();
 
+    ['Hips', 'Neck', 'Head', 'Left_leg', 'Left_knee', 'Left_ankle'].forEach(k => {
+      modelBones[k] && modelBones[k].add(new THREE.AxesHelper());
+    });
+
 	  GameObject.startAll();
 	}
 	update() {
@@ -743,7 +758,7 @@ class Rig {
       if (['Left_wrist'].includes(k)) {
         modelBone.quaternion
           .premultiply(modelBoneOutput.localRotation)
-          .multiply(new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), (this.flipZ ? -1 : 1) * Math.PI/2)) // center
+          .multiply(new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), Math.PI/2)) // center
           // .multiply(new Quaternion().setFromAxisAngle(new Vector3(0, 0, 1), Math.PI/4)) // up
       }
 
@@ -766,7 +781,7 @@ class Rig {
       if (['Right_wrist'].includes(k)) {
         modelBone.quaternion
           .premultiply(modelBoneOutput.localRotation)
-          .multiply(new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), (this.flipZ ? -1 : 1) * -Math.PI/2)) // center
+          .multiply(new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), -Math.PI/2)) // center
           // .multiply(new Quaternion().setFromAxisAngle(new Vector3(0, 0, 1), -Math.PI/8)) // up
       }
       modelBone.updateMatrixWorld();
@@ -777,41 +792,39 @@ class Rig {
     this.lastTimestamp = now;
     const _processHairBone = (hairBone, children) => {
       const p = new Vector3().setFromMatrixPosition(hairBone.matrixWorld);
-      // console.log('proces', hairBone.name, p.toArray());
+
       for (let i = 0; i < children.length; i++) {
         const childHairBone = children[i];
 
-        if (childHairBone.isBone) {
-          const px = new Vector3().setFromMatrixPosition(childHairBone.matrixWorld);
-          const hairDistance = px.distanceTo(p);
-          const hairDirection = px.clone().sub(p).normalize();
+        const px = new Vector3().setFromMatrixPosition(childHairBone.matrixWorld);
+        const hairDistance = px.distanceTo(p);
+        const hairDirection = px.clone().sub(p).normalize();
 
-          if (hairDistance > childHairBone.length * 2) {
-            px.copy(p).add(hairDirection.clone().multiplyScalar(childHairBone.length * 2));
-          }
-
-          const l = childHairBone.velocity.length();
-          if (l > 0.05) {
-            childHairBone.velocity.multiplyScalar(0.05/l);
-          }
-
-          childHairBone.velocity.add(hairDirection.clone().multiplyScalar(-(hairDistance - childHairBone.length) * 0.1 * timeDiff/32));
-          childHairBone.velocity.add(new Vector3(0, -9.8, 0).multiplyScalar(0.0002 * timeDiff/32));
-          childHairBone.velocity.add(childHairBone.worldParentOffset.clone().applyQuaternion(this.modelBones.Hips.quaternion).multiplyScalar(0.03 * timeDiff/32));
-          childHairBone.velocity.lerp(new Vector3(), 0.2 * timeDiff/32);
-
-          const p2 = px.clone().add(childHairBone.velocity.clone().multiplyScalar(1));
-          const q2 = childHairBone.initialWorldQuaternion.clone().premultiply(
-            new Quaternion().setFromRotationMatrix(new THREE.Matrix4().lookAt(
-              new Vector3(0, 0, 0),
-              hairDirection,
-              new Vector3(0, 0, -1).applyQuaternion(this.modelBones.Hips.quaternion),
-            ))
-          );
-          const s2 = new Vector3(1, 1, 1);
-          childHairBone.matrixWorld.compose(p2, q2, s2);
-          _processHairBone(childHairBone, childHairBone.children);
+        if (hairDistance > childHairBone.length * 2) {
+          px.copy(p).add(hairDirection.clone().multiplyScalar(childHairBone.length * 2));
         }
+
+        const l = childHairBone.velocity.length();
+        if (l > 0.05) {
+          childHairBone.velocity.multiplyScalar(0.05/l);
+        }
+
+        childHairBone.velocity.add(hairDirection.clone().multiplyScalar(-(hairDistance - childHairBone.length) * 0.1 * timeDiff/32));
+        childHairBone.velocity.add(new Vector3(0, -9.8, 0).multiplyScalar(0.0002 * timeDiff/32));
+        childHairBone.velocity.add(childHairBone.worldParentOffset.clone().applyQuaternion(this.modelBones.Hips.quaternion).multiplyScalar(0.03 * timeDiff/32));
+        childHairBone.velocity.lerp(new Vector3(), 0.2 * timeDiff/32);
+
+        const p2 = px.clone().add(childHairBone.velocity.clone().multiplyScalar(1));
+        const q2 = childHairBone.initialWorldQuaternion.clone().premultiply(
+          new Quaternion().setFromRotationMatrix(new THREE.Matrix4().lookAt(
+            new Vector3(0, 0, 0),
+            hairDirection,
+            new Vector3(0, 0, -1).applyQuaternion(this.modelBones.Hips.quaternion),
+          ))
+        );
+        const s2 = new Vector3(1, 1, 1);
+        childHairBone.matrixWorld.compose(p2, q2, s2);
+        _processHairBone(childHairBone, childHairBone.children);
       }
     };
     _processHairBone(this.modelBones.Head, this.hairBones);

@@ -198,16 +198,13 @@ function toPositiveEulerAngle(n)
 
 
       const shoulderRightOffset = this.target.position.sub(this.upperArmPos);
-      if (PoseManager.Instance.flipZ) {
-      	shoulderRightOffset.applyQuaternion(new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), Math.PI));
-      }
       const shoulderRightRotation = new Quaternion().setFromRotationMatrix(
       	new THREE.Matrix4().lookAt(
 	      	new Vector3(),
 	      	shoulderRightOffset,
 	      	new Vector3(0, 1, 0)
 	      )
-      ).multiply(new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), (PoseManager.Instance.flipZ ? -1 : 1) * (this.left ? -1 : 1) * Math.PI/2));
+      ).multiply(new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), (this.left ? -1 : 1) * Math.PI/2));
 
       // const shoulderRightRotation = new Quaternion().setFromUnitVectors(this.armDirection, targetShoulderDirection);
       this.setUpperArmRotation(shoulderRightRotation);
@@ -398,9 +395,6 @@ function toPositiveEulerAngle(n)
 					this.setWrist2Rotation(new Quaternion().multiplyQuaternions(Quaternion.AngleAxis(elbowTargetAngle * .8, this.armDirection.clone().applyQuaternion(this.lowerArmRotation)), this.lowerArmRotation));
 			}
 			const targetRotation = this.target.rotation;
-			if (PoseManager.Instance.flipZ) {
-				targetRotation.premultiply(new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), Math.PI))
-			}
 			this.setHandRotation(targetRotation);
 		}
 

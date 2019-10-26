@@ -107,11 +107,7 @@ class ShoulderPoser extends MonoBehavior
 		updateHips() {
 		  const hmdPosition = this.vrTrackingReferences.head.position;
 		  const hmdRotation = this.vrTrackingReferences.head.rotation;
-		  if (PoseManager.Instance.flipZ) {
-		  	hmdRotation.premultiply(z180Quaternion);
-		  } else {
-		  	hmdRotation.multiply(z180Quaternion);
-		  }
+      hmdRotation.multiply(z180Quaternion);
       const hmdEuler = new THREE.Euler().setFromQuaternion(hmdRotation, 'YXZ');
       hmdEuler.x = 0;
       hmdEuler.z = 0;
@@ -132,11 +128,7 @@ class ShoulderPoser extends MonoBehavior
 		updateNeck() {
 			// const hmdPosition = this.vrTrackingReferences.head.position;
 			const hmdRotation = this.vrTrackingReferences.head.rotation;
-			if (PoseManager.Instance.flipZ) {
-		  	hmdRotation.premultiply(z180Quaternion);
-		  } else {
-		  	hmdRotation.multiply(z180Quaternion);
-		  }
+		  hmdRotation.multiply(z180Quaternion);
       const hmdEuler = new THREE.Euler().setFromQuaternion(hmdRotation, 'YXZ');
       hmdEuler.x = 0;
       hmdEuler.z = 0;
@@ -222,11 +214,7 @@ class ShoulderPoser extends MonoBehavior
 			const relativeHeightDiff = -heightDiff / PoseManager.Instance.playerHeightHmd;
 
       const hmdRotation = this.vrTrackingReferences.head.rotation;
-			if (PoseManager.Instance.flipZ) {
-		  	hmdRotation.premultiply(z180Quaternion);
-		  } else {
-		  	hmdRotation.multiply(z180Quaternion);
-		  }
+      hmdRotation.multiply(z180Quaternion);
 			const headRightRotation = VectorHelpers.getAngleBetween(this.shoulder.transform.forward,
 										  new Vector3(0, 0, 1).applyQuaternion(hmdRotation),
 										  Vector3.up, this.shoulder.transform.right) + this.rightRotationHeadRotationOffset;
@@ -293,11 +281,7 @@ class ShoulderPoser extends MonoBehavior
 		clampHeadRotationDeltaUp(targetRotation)
 		{
 			const hmdRotation = this.vrTrackingReferences.head.rotation;
-			if (PoseManager.Instance.flipZ) {
-		  	hmdRotation.premultiply(z180Quaternion);
-		  } else {
-		  	hmdRotation.multiply(z180Quaternion);
-		  }
+			hmdRotation.multiply(z180Quaternion);
 			const headUpRotation = (Transform.eulerAngles(hmdRotation).y + 360) % 360;
 			const targetUpRotation = (targetRotation.y + 360) % 360;
 
