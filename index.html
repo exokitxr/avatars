@@ -825,7 +825,7 @@ function animate(timestamp, frame, referenceSpace) {
       // rig.inputs.hmd.position = new Vector3(positionOffset, 0.6 + standFactor, 0);
       rig.inputs.hmd.position = new Vector3(positionOffset, standFactor, 0);
       rig.inputs.hmd.rotation = new Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), rotationAngle)
-        .multiply(new Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.sin((realDateNow()%2000)/2000*Math.PI*2)*Math.PI*0.25));
+        .multiply(new Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.sin((realDateNow()%2000)/2000*Math.PI*2)*Math.PI*0.25));
 
       rig.inputs.rightGamepad.rotation = new Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), rotationAngle);
       rig.inputs.rightGamepad.position = new Vector3(positionOffset, rig.height*0.7, 0).add(
