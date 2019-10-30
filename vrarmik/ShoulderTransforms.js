@@ -1,15 +1,14 @@
-import {Vector3, Transform, GameObject, MonoBehavior} from './Unity.js';
+import {Vector3, Transform} from './Unity.js';
 import ArmTransforms from './ArmTransforms.js';
 import ShoulderPoser from './ShoulderPoser.js';
 import VRArmIK from './VRArmIK.js';
 import PoseManager from './PoseManager.js';
 
 
-class ShoulderTransforms extends MonoBehavior
+class ShoulderTransforms
 	{
-		constructor(...args) {
-      super(...args);
-
+		constructor(rig) {
+      this.transform = new Transform();
       this.hips = new Transform();
       this.spine = new Transform();
       this.neck = new Transform();
@@ -34,37 +33,46 @@ class ShoulderTransforms extends MonoBehavior
 			this.rightShoulderAnchor = new Transform();
 			this.transform.AddChild(this.rightShoulderAnchor);
 
-			this.leftArm = new GameObject().AddComponent(ArmTransforms);
-			this.rightArm = new GameObject().AddComponent(ArmTransforms);
+			this.leftArm = new ArmTransforms();
+			this.leftArm.poseManager = rig.poseManager;
+			this.rightArm = new ArmTransforms();
+			this.rightArm.poseManager = rig.poseManager;
 
 			this.leftShoulderAnchor.AddChild(this.leftArm.transform);
 			this.rightShoulderAnchor.AddChild(this.rightArm.transform);
+
+			this.shoulderPoser = new ShoulderPoser(rig, this);
+
+			this.leftArmIk = new VRArmIK(this.leftArm);
+			this.leftArmIk.shoulder = this;
+			this.leftArmIk.shoulderPoser = this.shoulderPoser;
+			this.leftArmIk.target = this.leftArmIk.shoulderPoser.avatarTrackingReferences.leftHand;
+
+			this.rightArmIk = new VRArmIK(this.rightArm);
+			this.rightArmIk.shoulder = this;
+			this.rightArmIk.shoulderPoser = this.shoulderPoser;
+			this.rightArmIk.target = this.rightArmIk.shoulderPoser.avatarTrackingReferences.rightHand;
+			this.rightArmIk.left = false;
 		}
 
-		OnEnable()
+		Start()
 		{
-			const shoulderPoser = this.GetComponent(ShoulderPoser);
-			{
-				const armIk = this.leftArm.GetComponentInChildren(VRArmIK);
-				armIk.shoulder = this;
-				armIk.shoulderPoser = shoulderPoser;
-				armIk.target = armIk.shoulderPoser.avatarTrackingReferences.leftHand.transform;
-			}
-			{
-				const armIk = this.rightArm.GetComponentInChildren(VRArmIK);
-				armIk.shoulder = this;
-				armIk.shoulderPoser = shoulderPoser;
-				armIk.target = armIk.shoulderPoser.avatarTrackingReferences.rightHand.transform;
-				armIk.left = false;
-			}
+			// this.setShoulderWidth(PoseManager.Instance.playerWidthShoulders);
+
+			this.leftArm.Start();
+			this.rightArm.Start();
+			this.shoulderPoser.Start();
+			this.leftArmIk.Start();
+			this.rightArmIk.Start();
 		}
 
-		/* Start()
-		{
-			this.setShoulderWidth(PoseManager.Instance.playerWidthShoulders);
+		Update() {
+			this.shoulderPoser.Update();
+			this.leftArmIk.Update();
+			this.rightArmIk.Update();
 		}
 
-		setShoulderWidth(width)
+		/* setShoulderWidth(width)
 		{
 			const localScale = new Vector3(width * .5, .05, .05);
 			const localPosition = new Vector3(width * .25, 0, 0);

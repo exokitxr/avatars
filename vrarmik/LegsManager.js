@@ -1,6 +1,4 @@
 import {Vector2, Vector3, Quaternion, Transform, GameObject, MonoBehavior, XRSettings} from './Unity.js';
-import PoseManager from './PoseManager.js';
-import ShoulderTransforms from './ShoulderTransforms.js';
 
 const _mod = (a, n) => (a % n + n) % n;
 const _angleDiff = (targetA, sourceA) => {
@@ -9,10 +7,9 @@ const _angleDiff = (targetA, sourceA) => {
   return a;
 };
 
-class Leg extends MonoBehavior {
-  constructor(...args) {
-    super(...args);
-
+class Leg {
+  constructor() {
+  	this.transform = new Transform();
     this.upperLeg = new Transform();
     this.lowerLeg = new Transform();
     this.foot = new Transform();
@@ -38,7 +35,7 @@ class Leg extends MonoBehavior {
     this.lowerLegLength = this.foot.localPosition.length();
   }
 
-  LateUpdate() {
+  Update() {
   	// const hipsDirection = new Vector3(0, 0, 1).applyQuaternion(this.transform.rotation);
   	// const hipsY = Math.atan2(hipsDirection.z, hipsDirection.x);
   	/* if (hipsY > Math.PI) {
@@ -141,7 +138,7 @@ class Leg extends MonoBehavior {
     } else {
     	this.upperLeg.localRotation = this.upperLeg.localRotation.slerp(new Quaternion(), 0.1);
     	this.lowerLeg.localRotation = this.lowerLeg.localRotation.slerp(new Quaternion(), 0.1);
-    	this.foot.localRotation = this.foot.localRotation.slerp(new Quaternion().setFromUnitVectors(new Vector3(0, -1, 0), new Vector3(0, 0, 1)), 0.1);
+    	this.foot.localRotation = this.foot.localRotation.slerp(new Quaternion().setFromAxisAngle(new Vector3(1, 0, 0), -Math.PI/4), 0.1);
     	// this.foot.position = footPosition;
       /* const direction = this.foot.position.sub(this.upperLeg.position).normalize().lerp(new Vector3(0, -1, 0), 0.1);
       const lowerLegPosition = this.upperLeg.position.add(direction.clone().multiplyScalar(upperLegLength));
@@ -172,24 +169,18 @@ class Leg extends MonoBehavior {
 	}
 }
 
-class LegsManager extends MonoBehavior
-{
-	constructor(...args) {
-    super(...args);
-
-    const shoulderTransforms = this.GetOrAddComponent(ShoulderTransforms);
-    this.hips = shoulderTransforms.hips;
-    this.leftLeg = new GameObject().AddComponent(Leg);
+class LegsManager {
+	constructor(rig) {
+    this.hips = rig.shoulderTransforms.hips;
+    this.leftLeg = new Leg();
     this.hips.AddChild(this.leftLeg.transform);
-    this.rightLeg = new GameObject().AddComponent(Leg);
+    this.rightLeg = new Leg();
     this.hips.AddChild(this.rightLeg.transform);
 
     this.rightLeg.foot.stickTransform.position = this.rightLeg.foot.position;
     this.rightLeg.left = false;
 
-    // this.spineLength = 0.3525347660851869;
-
-    this.poseManager = this.GetOrAddComponent(PoseManager);
+    this.poseManager = rig.poseManager;
     this.leftLeg.poseManager = this.poseManager;
     this.rightLeg.poseManager = this.poseManager;
     // this.hmdTransformRef = poseManager.vrTransforms.head;
@@ -197,9 +188,11 @@ class LegsManager extends MonoBehavior
 
   Start() {
   	this.legSeparation = this.leftLeg.upperLeg.position.distanceTo(this.rightLeg.upperLeg.position);
+  	this.leftLeg.Start();
+  	this.rightLeg.Start();
   }
 
-	LateUpdate() {
+	Update() {
     const hipsFloorPosition = this.hips.position;
     hipsFloorPosition.y = 0;
     const hipsFloorEuler = new THREE.Euler().setFromQuaternion(this.hips.rotation, 'YXZ');
@@ -228,39 +221,35 @@ class LegsManager extends MonoBehavior
 
     if (this.leftLeg.standing) {
       const leftFootEuler = new THREE.Euler().setFromQuaternion(leftFootRotation, 'YXZ');
+      leftFootEuler.x = 0;
+	    leftFootEuler.z = 0;
     	if (leftFootEuler.y < -Math.PI*0.15) {
     		leftFootEuler.y = -Math.PI*0.15;
-    		new THREE.Matrix4().compose(Vector3.zero, new Quaternion().setFromEuler(leftFootEuler), Vector3.one)
-		      .premultiply(planeMatrix)
-		      .decompose(position, quaternion, scale);
-    		this.leftLeg.foot.stickTransform.rotation = quaternion;
     	}
     	if (leftFootEuler.y > Math.PI*0.15) {
     		leftFootEuler.y = Math.PI*0.15;
-    		new THREE.Matrix4().compose(Vector3.zero, new Quaternion().setFromEuler(leftFootEuler), Vector3.one)
-		      .premultiply(planeMatrix)
-		      .decompose(position, quaternion, scale);
-    		this.leftLeg.foot.stickTransform.rotation = quaternion;
     	}
+    	new THREE.Matrix4().compose(Vector3.zero, new Quaternion().setFromEuler(leftFootEuler), Vector3.one)
+	      .premultiply(planeMatrix)
+	      .decompose(position, quaternion, scale);
+  		this.leftLeg.foot.stickTransform.rotation = quaternion;
     } else {
     	this.leftLeg.foot.stickTransform.rotation = this.leftLeg.foot.rotation.multiply(new Quaternion().setFromUnitVectors(new Vector3(0, -1, 0), new Vector3(0, 0, 1)).inverse());
     }
     if (this.rightLeg.standing) {
 	    const rightFootEuler = new THREE.Euler().setFromQuaternion(rightFootRotation, 'YXZ');
+	    rightFootEuler.x = 0;
+	    rightFootEuler.z = 0;
     	if (rightFootEuler.y < -Math.PI*0.15) {
     		rightFootEuler.y = -Math.PI*0.15;
-    		new THREE.Matrix4().compose(Vector3.zero, new Quaternion().setFromEuler(rightFootEuler), Vector3.one)
-		      .premultiply(planeMatrix)
-		      .decompose(position, quaternion, scale);
-    		this.rightLeg.foot.stickTransform.rotation = quaternion;
     	}
     	if (rightFootEuler.y > Math.PI*0.15) {
     		rightFootEuler.y = Math.PI*0.15;
-    		new THREE.Matrix4().compose(Vector3.zero, new Quaternion().setFromEuler(rightFootEuler), Vector3.one)
-		      .premultiply(planeMatrix)
-		      .decompose(position, quaternion, scale);
-    		this.rightLeg.foot.stickTransform.rotation = quaternion;
     	}
+    	new THREE.Matrix4().compose(Vector3.zero, new Quaternion().setFromEuler(rightFootEuler), Vector3.one)
+	      .premultiply(planeMatrix)
+	      .decompose(position, quaternion, scale);
+  		this.rightLeg.foot.stickTransform.rotation = quaternion;
 	  } else {
       this.rightLeg.foot.stickTransform.rotation = this.rightLeg.foot.rotation.multiply(new Quaternion().setFromUnitVectors(new Vector3(0, -1, 0), new Vector3(0, 0, 1)).inverse());
 	  }
@@ -293,6 +282,9 @@ class LegsManager extends MonoBehavior
 			footPosition.y = 0;
 			this.rightLeg.foot.stickTransform.position = footPosition;
 		}
+
+		this.leftLeg.Update();
+		this.rightLeg.Update();
   }
 }
 

@@ -1,14 +1,14 @@
 import VRTrackingReferences from './VRTrackingReferences.js';
 import AvatarVRTrackingReferences from './AvatarVRTrackingReferences.js';
-import {GameObject, MonoBehavior, XRSettings} from './Unity.js';
+import {Transform, XRSettings} from './Unity.js';
 
-class PoseManager extends MonoBehavior
+class PoseManager
 	{
-		constructor(...args) {
-      super(...args);
+		constructor(rig) {
+      this.transform = new Transform();
 
-			this.vrTransforms = new GameObject().AddComponent(VRTrackingReferences);
-			this.avatarVrTransforms = new GameObject().AddComponent(AvatarVRTrackingReferences);
+			this.vrTransforms = new VRTrackingReferences();
+			this.avatarVrTransforms = new AvatarVRTrackingReferences(this);
 		  // this.OnCalibrateListener = null;
 
       // Oculus uses a different reference position -> 0 is the reference head position if the user is standing in the middle of the room. 
@@ -24,7 +24,7 @@ class PoseManager extends MonoBehavior
 
       this.flipY = false;
 
-      PoseManager.Instance = this;
+      // PoseManager.Instance = this;
     }
 
 		/* OnEnable()
@@ -39,15 +39,15 @@ class PoseManager extends MonoBehavior
 			}
 		} */
 
-		Awake()
+		Start()
 		{
-            if (this.loadPlayerSizeOnAwake)
-            {
-                this.loadPlayerSize();
-            }
-            const device = XRSettings.loadedDeviceName;
-            this.vrSystemOffsetHeight = /*string.IsNullOrEmpty(device) || */device == "OpenVR" ? 0 : this.playerHeightHmd;
-        }
+      if (this.loadPlayerSizeOnAwake)
+      {
+          this.loadPlayerSize();
+      }
+      const device = XRSettings.loadedDeviceName;
+      this.vrSystemOffsetHeight = /*string.IsNullOrEmpty(device) || */device == "OpenVR" ? 0 : this.playerHeightHmd;
+    }
 
 		/* Start()
 		{
@@ -90,6 +90,6 @@ class PoseManager extends MonoBehavior
 			this.playerWidthWrist = PlayerPrefs.GetFloat("VRArmIK_PlayerWidthWrist", this.referencePlayerWidthWrist);
 		}
 	}
-	PoseManager.Instance = null;
+	// PoseManager.Instance = null;
 
 export default PoseManager;

@@ -1,4 +1,4 @@
-import {Vector3, Quaternion, MonoBehavior} from './Unity.js';
+import {Vector3, Quaternion, Transform} from './Unity.js';
 
 const EulerOrder = {
 	XYZ: 'XYZ',
@@ -9,10 +9,10 @@ const EulerOrder = {
 	ZYX: 'ZYX',
 };
 
-class StaticOffsetTransform extends MonoBehavior
+class StaticOffsetTransform
 	{
-		constructor(...args) {
-      super(...args);
+		constructor() {
+      this.transform = new Transform();
 
 			this.reference = null;
 			this.offsetPosition = new Vector3();
@@ -53,10 +53,10 @@ class StaticOffsetTransform extends MonoBehavior
 			}
 		}
 
-		Awake()
+		/* Awake()
 		{
 			this.updatePosition();
-		}
+		} */
 
 		Update()
 		{

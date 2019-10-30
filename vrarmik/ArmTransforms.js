@@ -1,11 +1,9 @@
-import {Vector3, Quaternion, Transform, MonoBehavior, Mathf} from './Unity.js';
-import PoseManager from './PoseManager.js';
+import {Vector3, Quaternion, Transform, Mathf} from './Unity.js';
 
-class ArmTransforms extends MonoBehavior
+class ArmTransforms
 	{
-		constructor(...args) {
-      super(...args);
-
+		constructor() {
+      this.transform = new Transform();
 			this.upperArm = new Transform();
 			this.lowerArm = new Transform();
 			this.wrist1 = new Transform();
@@ -21,6 +19,8 @@ class ArmTransforms extends MonoBehavior
 			this.armLengthByScale = false;
 			this.scaleAxis = Vector3.one;
 			this.scaleHandFactor = .7;
+
+			this.poseManager = null;
 		}
 
 		get upperArmLength() {
@@ -51,7 +51,7 @@ class ArmTransforms extends MonoBehavior
 		updateArmLengths()
 		{
 			const shoulderWidth = new Vector3().subVectors(this.upperArm.position, this.lowerArm.position).magnitude;
-			const _armLength = (PoseManager.Instance.playerWidthWrist - shoulderWidth) / 2;
+			const _armLength = (this.poseManager.playerWidthWrist - shoulderWidth) / 2;
 			this.setArmLength(_armLength);
 		}
 

@@ -1,4 +1,4 @@
-import {Vector3, Quaternion, GameObject} from './Unity.js';
+import {Vector3, Quaternion} from './Unity.js';
 import {fixSkeletonZForward} from '../proto/three-ik/modified.AxisUtils.js';
 import PoseManager from './PoseManager.js';
 import ShoulderTransforms from './ShoulderTransforms.js';
@@ -43,8 +43,9 @@ const _copySkeleton = (src, dst) => {
 };
 
 class Rig {
-	constructor(model) {
-    GameObject.clearAll();
+	constructor(model, options = {}) {
+    this.model = model;
+    this.options = options;
 
     model.updateMatrixWorld(true);
     const skinnedMeshes = [];
@@ -57,6 +58,8 @@ class Rig {
 	    }
 	  });
     skinnedMeshes.sort((a, b) => b.skeleton.bones.length - a.skeleton.bones.length);
+    this.skinnedMeshes = skinnedMeshes;
+
     const skeletonSkinnedMesh = skinnedMeshes.find(o => o.skeleton.bones[0].parent) || null;
     const skeleton = skeletonSkinnedMesh && skeletonSkinnedMesh.skeleton;
     if (skeleton) {
@@ -87,6 +90,7 @@ class Rig {
       return result;
     };
 	  const tailBones = _getTailBones(skeleton);
+    window.tailBones = tailBones;
     // const tailBones = skeleton.bones.filter(bone => bone.children.length === 0);
 	  const _findClosestParentBone = (bone, pred) => {
       for (; bone; bone = bone.parent) {
@@ -378,19 +382,56 @@ class Rig {
       }
       return null;
     }).filter(bone => bone);
-    hairBones.forEach(rootHairBone => {
-      rootHairBone.traverse(hairBone => {
-        hairBone.length = hairBone.position.length();
-        hairBone.worldParentOffset = hairBone.getWorldPosition(new Vector3()).sub(hairBone.parent.getWorldPosition(new Vector3())).divide(armatureScale);
-        hairBone.initialWorldQuaternion = hairBone.getWorldQuaternion(new Quaternion());
-        hairBone.velocity = new Vector3();
-        if (hairBone !== rootHairBone) {
-          hairBone._updateMatrixWorld = hairBone.updateMatrixWorld;
-          hairBone.updateMatrixWorld = () => {};
-        }
+    if (options.hair) {
+      hairBones.forEach(rootHairBone => {
+        rootHairBone.traverse(hairBone => {
+          hairBone.length = hairBone.position.length();
+          hairBone.worldParentOffset = hairBone.getWorldPosition(new Vector3()).sub(hairBone.parent.getWorldPosition(new Vector3())).divide(armatureScale);
+          hairBone.initialWorldQuaternion = hairBone.getWorldQuaternion(new Quaternion());
+          hairBone.velocity = new Vector3();
+          if (hairBone !== rootHairBone) {
+            hairBone._updateMatrixWorld = hairBone.updateMatrixWorld;
+            hairBone.updateMatrixWorld = () => {};
+          }
+        });
       });
-    });
+    }
     this.hairBones = hairBones;
+
+    const _findFinger = (r, left) => {
+      const fingerTipBone = tailBones
+        .filter(bone => r.test(bone.name) && _findClosestParentBone(bone, bone => bone === modelBones.Left_wrist || bone === modelBones.Right_wrist))
+        .sort((a, b) => {
+          const aName = a.name.replace(r, '');
+          const aLeftBalance = _countCharacters(aName, /l/i) - _countCharacters(aName, /r/i);
+          const bName = b.name.replace(r, '');
+          const bLeftBalance = _countCharacters(bName, /l/i) - _countCharacters(bName, /r/i);
+          if (!left) {
+            return aLeftBalance - bLeftBalance;
+          } else {
+            return bLeftBalance - aLeftBalance;
+          }
+        });
+      const fingerRootBone = fingerTipBone.length > 0 ? _findFurthestParentBone(fingerTipBone[0], bone => r.test(bone.name)) : null;
+      return fingerRootBone;
+    };
+    const fingerBones = {
+      left: {
+        thumb: _findFinger(/thumb/gi, true),
+        index: _findFinger(/index/gi, true),
+        middle: _findFinger(/middle/gi, true),
+        ring: _findFinger(/ring/gi, true),
+        little: _findFinger(/little/gi, true) || _findFinger(/pinky/gi, true),
+      },
+      right: {
+        thumb: _findFinger(/thumb/gi, false),
+        index: _findFinger(/index/gi, false),
+        middle: _findFinger(/middle/gi, false),
+        ring: _findFinger(/ring/gi, false),
+        little: _findFinger(/little/gi, false) || _findFinger(/pinky/gi, false),
+      },
+    };
+    this.fingerBones = fingerBones;
 
     const preRotations = {};
     const _ensurePrerotation = k => {
@@ -504,19 +545,14 @@ class Rig {
 		    modelBones[name].quaternion.premultiply(new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), Math.PI));
 		  });
 		}
-    // if ((preRotations.Right_arm && preRotations.Right_arm.applied) || (preRotations.Upper_armR && preRotations.Upper_armR.applied)) {
-      modelBones.Right_arm.quaternion.premultiply(qr.clone().inverse());
-      modelBones.Right_elbow.quaternion
-        .premultiply(qr)
-        .premultiply(qr2.clone().inverse());
-      modelBones.Left_arm.quaternion.premultiply(ql.clone().inverse());
-      modelBones.Left_elbow.quaternion
-        .premultiply(ql)
-        .premultiply(ql2.clone().inverse());
-      console.log('log yes', flipZ, flipY, flipLeg);
-    /* } else {
-      console.log('log no', flipZ, flipY, flipLeg);
-    } */
+    modelBones.Right_arm.quaternion.premultiply(qr.clone().inverse());
+    modelBones.Right_elbow.quaternion
+      .premultiply(qr)
+      .premultiply(qr2.clone().inverse());
+    modelBones.Left_arm.quaternion.premultiply(ql.clone().inverse());
+    modelBones.Left_elbow.quaternion
+      .premultiply(ql)
+      .premultiply(ql2.clone().inverse());
 	  model.updateMatrixWorld(true);
 
     for (let i = 0; i < skeleton.bones.length; i++) {
@@ -562,11 +598,10 @@ class Rig {
 	    rightFoot: _getOffset(modelBones.Left_ankle),
 	  };
 
-		const rigObject = new GameObject('rig');
-		this.poseManager = rigObject.AddComponent(PoseManager);
+		this.poseManager = new PoseManager(this);
 		this.poseManager.flipY = flipY;
-		this.shoulderTransforms = rigObject.AddComponent(ShoulderTransforms);
-		this.legsManager = rigObject.AddComponent(LegsManager);
+		this.shoulderTransforms = new ShoulderTransforms(this);
+		this.legsManager = new LegsManager(this);
 
     this.shoulderTransforms.spine.localPosition = setups.spine;
     this.shoulderTransforms.transform.localPosition = setups.chest;
@@ -647,13 +682,24 @@ class Rig {
 	    Right_knee: this.outputs.leftLowerLeg,
 	    Right_ankle: this.outputs.leftFoot,
 	  };
+
+    this.audioContext = null;
+    this.volume = 0;
+    this.setMicrophoneMediaStream(options.microphoneMediaStream, {
+      muted: options.muted,
+    });
+
     this.lastTimestamp = Date.now();
 
-	  GameObject.startAll();
+	  this.poseManager.Start();
+    this.shoulderTransforms.Start();
+    this.legsManager.Start();
 	}
 	update() {
 // return;
-	  GameObject.updateAll();
+
+    this.shoulderTransforms.Update();
+    this.legsManager.Update();
 
 	  for (const k in this.modelBones) {
       const modelBone = this.modelBones[k];
@@ -757,44 +803,148 @@ class Rig {
     const now = Date.now();
     const timeDiff = Math.min(now - this.lastTimestamp, 1000);
     this.lastTimestamp = now;
-    const _processHairBone = (hairBone, children) => {
-      const p = new Vector3().setFromMatrixPosition(hairBone.matrixWorld);
 
-      for (let i = 0; i < children.length; i++) {
-        const childHairBone = children[i];
-
-        const px = new Vector3().setFromMatrixPosition(childHairBone.matrixWorld);
-        const hairDistance = px.distanceTo(p);
-        const hairDirection = px.clone().sub(p).normalize();
-
-        if (hairDistance > childHairBone.length * 2) {
-          px.copy(p).add(hairDirection.clone().multiplyScalar(childHairBone.length * 2));
+    if (this.options.fingers) {
+      const _processFingerBones = left => {
+        const fingerBones = left ? this.fingerBones.left : this.fingerBones.right;
+        const gamepadInput = left ? this.inputs.rightGamepad : this.inputs.leftGamepad;
+        for (const k in fingerBones) {
+          const fingerBone = fingerBones[k];
+          if (fingerBone) {
+            const axis = new Vector3();
+            let angle;
+            if (k === 'thumb') {
+              axis.set(0, left ? 1 : -1, 0);
+              angle = gamepadInput.grip * Math.PI*0.25;
+            } else if (k === 'index') {
+              axis.set(0, 0, left ? -1 : 1);
+              angle = gamepadInput.pointer * Math.PI*0.5;
+            } else {
+              axis.set(0, 0, left ? -1 : 1);
+              angle = gamepadInput.grip * Math.PI*0.5;
+            }
+            fingerBone.traverse(subFingerBone => {
+              subFingerBone.quaternion.setFromAxisAngle(axis, angle);
+            });
+          }
         }
+      };
+      _processFingerBones(true);
+      _processFingerBones(false);
+    }
 
-        const l = childHairBone.velocity.length();
-        if (l > 0.05) {
-          childHairBone.velocity.multiplyScalar(0.05/l);
+    if (this.options.hair) {
+      const _processHairBone = (hairBone, children) => {
+        const p = new Vector3().setFromMatrixPosition(hairBone.matrixWorld);
+
+        for (let i = 0; i < children.length; i++) {
+          const childHairBone = children[i];
+
+          const px = new Vector3().setFromMatrixPosition(childHairBone.matrixWorld);
+          const hairDistance = px.distanceTo(p);
+          const hairDirection = px.clone().sub(p).normalize();
+
+          if (hairDistance > childHairBone.length * 2) {
+            px.copy(p).add(hairDirection.clone().multiplyScalar(childHairBone.length * 2));
+          }
+
+          const l = childHairBone.velocity.length();
+          if (l > 0.05) {
+            childHairBone.velocity.multiplyScalar(0.05/l);
+          }
+
+          childHairBone.velocity.add(hairDirection.clone().multiplyScalar(-(hairDistance - childHairBone.length) * 0.1 * timeDiff/32));
+          childHairBone.velocity.add(new Vector3(0, -9.8, 0).multiplyScalar(0.0002 * timeDiff/32));
+          childHairBone.velocity.add(childHairBone.worldParentOffset.clone().applyQuaternion(this.modelBones.Hips.quaternion).multiplyScalar(0.03 * timeDiff/32));
+          childHairBone.velocity.lerp(new Vector3(), 0.2 * timeDiff/32);
+
+          const p2 = px.clone().add(childHairBone.velocity.clone().multiplyScalar(1));
+          const q2 = childHairBone.initialWorldQuaternion.clone().premultiply(
+            new Quaternion().setFromRotationMatrix(new THREE.Matrix4().lookAt(
+              new Vector3(0, 0, 0),
+              hairDirection,
+              new Vector3(0, 0, -1).applyQuaternion(this.modelBones.Hips.quaternion),
+            ))
+          );
+          const s2 = new Vector3(1, 1, 1);
+          childHairBone.matrixWorld.compose(p2, q2, s2);
+          _processHairBone(childHairBone, childHairBone.children);
         }
+      };
+      _processHairBone(this.modelBones.Head, this.hairBones);
+    }
 
-        childHairBone.velocity.add(hairDirection.clone().multiplyScalar(-(hairDistance - childHairBone.length) * 0.1 * timeDiff/32));
-        childHairBone.velocity.add(new Vector3(0, -9.8, 0).multiplyScalar(0.0002 * timeDiff/32));
-        childHairBone.velocity.add(childHairBone.worldParentOffset.clone().applyQuaternion(this.modelBones.Hips.quaternion).multiplyScalar(0.03 * timeDiff/32));
-        childHairBone.velocity.lerp(new Vector3(), 0.2 * timeDiff/32);
+    if (this.options.visemes) {
+      const aaValue = Math.min(this.volume * 10, 1);
+      const blinkValue = (() => {
+        const nowWindow = now % 2000;
+        if (nowWindow >= 0 && nowWindow < 100) {
+          return nowWindow/100;
+        } else if (nowWindow >= 100 && nowWindow < 200) {
+          return 1 - (nowWindow-100)/100;
+        } else {
+          return 0;
+        }
+      })();
+      this.skinnedMeshes.forEach(o => {
+        const {morphTargetDictionary, morphTargetInfluences} = o;
+        if (morphTargetDictionary && morphTargetInfluences) {
+          let aaMorphTargetIndex = morphTargetDictionary['vrc.v_aa'];
+          if (aaMorphTargetIndex === undefined) {
+            aaMorphTargetIndex = morphTargetDictionary['morphTarget26'];
+          }
+          if (aaMorphTargetIndex !== undefined) {
+            morphTargetInfluences[aaMorphTargetIndex] = aaValue;
+          }
 
-        const p2 = px.clone().add(childHairBone.velocity.clone().multiplyScalar(1));
-        const q2 = childHairBone.initialWorldQuaternion.clone().premultiply(
-          new Quaternion().setFromRotationMatrix(new THREE.Matrix4().lookAt(
-            new Vector3(0, 0, 0),
-            hairDirection,
-            new Vector3(0, 0, -1).applyQuaternion(this.modelBones.Hips.quaternion),
-          ))
-        );
-        const s2 = new Vector3(1, 1, 1);
-        childHairBone.matrixWorld.compose(p2, q2, s2);
-        _processHairBone(childHairBone, childHairBone.children);
-      }
-    };
-    _processHairBone(this.modelBones.Head, this.hairBones);
+          let blinkLeftMorphTargetIndex = morphTargetDictionary['vrc.blink_left'];
+          if (blinkLeftMorphTargetIndex === undefined) {
+            blinkLeftMorphTargetIndex = morphTargetDictionary['morphTarget16'];
+          }
+          if (blinkLeftMorphTargetIndex !== undefined) {
+            morphTargetInfluences[blinkLeftMorphTargetIndex] = blinkValue;
+          }
+
+          let blinkRightMorphTargetIndex = morphTargetDictionary['vrc.blink_right'];
+          if (blinkRightMorphTargetIndex === undefined) {
+            blinkRightMorphTargetIndex = morphTargetDictionary['morphTarget17'];
+          }
+          if (blinkRightMorphTargetIndex !== undefined) {
+            morphTargetInfluences[blinkRightMorphTargetIndex] = blinkValue;
+          }
+        }
+      });
+    }
 	}
+
+  async setMicrophoneMediaStream(microphoneMediaStream, options = {}) {
+    if (this.audioContext) {
+      this.audioContext.close();
+      this.audioContext = null;
+      setTimeout(() => {
+        this.volume = 0;
+      });
+    }
+    if (microphoneMediaStream) {
+      const audio = document.createElement('audio');
+      audio.srcObject = microphoneMediaStream;
+      audio.muted = true;
+      this.audioContext = new AudioContext();
+      const mediaStreamSource = this.audioContext.createMediaStreamSource(microphoneMediaStream);
+
+      await this.audioContext.audioWorklet.addModule('vrarmik/audio-volume-worklet.js');
+      const audioWorkletNode = new AudioWorkletNode(this.audioContext, 'volume-processor');
+      if (options.muted === false) {
+        audioWorkletNode.port.postMessage(JSON.stringify({
+          method: 'muted',
+          muted: false,
+        }));
+      }
+      audioWorkletNode.port.onmessage = e => {
+        this.volume = this.volume*0.8 + e.data*0.2;
+      };
+      mediaStreamSource.connect(audioWorkletNode).connect(this.audioContext.destination);
+    }
+  }
 }
 export default Rig;

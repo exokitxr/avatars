@@ -1,4 +1,4 @@
-import {Vector3, Quaternion, Transform, GameObject, MonoBehavior, Mathf} from './Unity.js';
+import {Vector3, Quaternion, Transform, GameObject, Mathf} from './Unity.js';
 import ShoulderTransforms from './ShoulderTransforms.js';
 import VRTrackingReferences from './VRTrackingReferences.js';
 import PoseManager from './PoseManager.js';
@@ -6,14 +6,13 @@ import VectorHelpers from './Utils/VectorHelpers.js';
 
 const z180Quaternion = new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), Math.PI);
 
-class ShoulderPoser extends MonoBehavior
+class ShoulderPoser
 	{
-		constructor(...args) {
-      super(...args);
-
-			this.shoulder = this.GetComponent(ShoulderTransforms);
-			this.vrTrackingReferences = null;
-			this.avatarTrackingReferences = null;
+		constructor(rig, shoulder) {
+			this.shoulder = shoulder;
+			this.poseManager = rig.poseManager;
+			this.vrTrackingReferences = this.poseManager.vrTransforms;
+			this.avatarTrackingReferences = this.poseManager.avatarVrTransforms;
 
       // this.headNeckDirectionVector = new Vector3(1.0894440904962721e-10, -0.06860782711996793, -0.0006757629250115499).normalize();
 			// this.headNeckDistance = 0.06861115505261682;
@@ -48,16 +47,10 @@ class ShoulderPoser extends MonoBehavior
 			this.shoulderDislocated = false;
 			this.shoulderRightRotation;
 
-
-			this.lastAngle = Vector3.zero;
+			// this.lastAngle = Vector3.zero;
 
 			this.leftShoulderAnkerStartLocalPosition = new Vector3();
 			this.rightShoulderAnkerStartLocalPosition = new Vector3();
-
-			if (this.vrTrackingReferences === null)
-				this.vrTrackingReferences = PoseManager.Instance.vrTransforms;
-			if (this.avatarTrackingReferences === null)
-				this.avatarTrackingReferences = PoseManager.Instance.avatarVrTransforms;
 		}
 
 		Start() {
@@ -68,9 +61,9 @@ class ShoulderPoser extends MonoBehavior
 
 		/* onCalibrate()
 		{
-			this.shoulder.leftArm.setArmLength((avatarTrackingReferences.leftHand.transform.position - this.shoulder.leftShoulderAnchor.position)
+			this.shoulder.leftArm.setArmLength((avatarTrackingReferences.leftHand.position - this.shoulder.leftShoulderAnchor.position)
 				.magnitude);
-			this.shoulder.rightArm.setArmLength((avatarTrackingReferences.rightHand.transform.position - this.shoulder.rightShoulderAnchor.position)
+			this.shoulder.rightArm.setArmLength((avatarTrackingReferences.rightHand.position - this.shoulder.rightShoulderAnchor.position)
 				.magnitude);
 		} */
 
@@ -78,8 +71,8 @@ class ShoulderPoser extends MonoBehavior
 		{
       this.updateHips();
 
-			this.shoulder.transform.rotation = Quaternion.identity;
-			this.positionShoulder();
+			// this.shoulder.transform.rotation = Quaternion.identity;
+			// this.positionShoulder();
 			this.rotateShoulderUpBase();
 			this.rotateShoulderRightBase();
 
@@ -89,7 +82,7 @@ class ShoulderPoser extends MonoBehavior
 				this.rotateRightShoulder();
 			}
 
-			if (this.enableShoulderDislocation)
+			/* if (this.enableShoulderDislocation)
 			{
 				this.clampShoulderHandDistance();
 			}
@@ -97,7 +90,7 @@ class ShoulderPoser extends MonoBehavior
 			{
 				this.shoulder.leftArm.transform.localPosition = Vector3.zero;
 				this.shoulder.rightArm.transform.localPosition = Vector3.zero;
-			}
+			} */
 
 			this.updateNeck();
 
@@ -119,35 +112,38 @@ class ShoulderPoser extends MonoBehavior
 		  const spinePosition = chestPosition.clone().add(this.shoulder.transform.localPosition.multiplyScalar(-1).applyQuaternion(hmdFlatRotation));
 		  const hipsPosition = spinePosition.clone().add(this.shoulder.spine.localPosition.multiplyScalar(-1).applyQuaternion(hmdFlatRotation));
 
-      this.shoulder.hips.position = hipsPosition;
-      this.shoulder.hips.rotation = hmdFlatRotation;
-      this.shoulder.spine.rotation = hmdFlatRotation;
-      this.shoulder.transform.localRotation = new Quaternion();
+      this.shoulder.hips.localPosition = hipsPosition;
+      this.shoulder.hips.localRotation = hmdFlatRotation;
+      // this.shoulder.spine.rotation = hmdFlatRotation;
+      // this.shoulder.transform.localRotation = new Quaternion();
 		}
 
 		updateNeck() {
 			// const hmdPosition = this.vrTrackingReferences.head.position;
 			const hmdRotation = this.vrTrackingReferences.head.rotation;
 		  hmdRotation.multiply(z180Quaternion);
-      const hmdEuler = new THREE.Euler().setFromQuaternion(hmdRotation, 'YXZ');
-      hmdEuler.x = 0;
-      hmdEuler.z = 0;
-      const hmdFlatRotation = new Quaternion().setFromEuler(hmdEuler);
+      const hmdFlatEuler = new THREE.Euler().setFromQuaternion(hmdRotation, 'YXZ');
+      hmdFlatEuler.x = 0;
+      hmdFlatEuler.z = 0;
+      const hmdFlatRotation = new Quaternion().setFromEuler(hmdFlatEuler);
+      const hmdUpEuler = new THREE.Euler().setFromQuaternion(hmdRotation, 'YXZ');
+      hmdUpEuler.y = 0;
+      const hmdUpRotation = new Quaternion().setFromEuler(hmdUpEuler);
 
-      this.shoulder.neck.rotation = hmdFlatRotation;
-      this.shoulder.head.rotation = hmdRotation;
+      this.shoulder.neck.localRotation = hmdFlatRotation.clone().premultiply(this.shoulder.transform.rotation.inverse());
+      this.shoulder.head.localRotation = hmdUpRotation;
 		}
 
 		rotateLeftShoulder()
 		{
-			this.rotateShoulderUp(this.shoulder.leftShoulder, this.shoulder.leftArm, this.avatarTrackingReferences.leftHand.transform,
+			this.rotateShoulderUp(this.shoulder.leftShoulder, this.shoulder.leftArm, this.avatarTrackingReferences.leftHand,
 				this.leftShoulderAnkerStartLocalPosition, 1);
 
 		}
 
 		rotateRightShoulder()
 		{
-			this.rotateShoulderUp(this.shoulder.rightShoulder, this.shoulder.rightArm, this.avatarTrackingReferences.rightHand.transform,
+			this.rotateShoulderUp(this.shoulder.rightShoulder, this.shoulder.rightArm, this.avatarTrackingReferences.rightHand,
 				this.rightShoulderAnkerStartLocalPosition, -1);
 		}
 
@@ -182,8 +178,8 @@ class ShoulderPoser extends MonoBehavior
 
 		positionShoulder()
 		{
-			/* const headNeckOffset = this.headNeckDirectionVector.clone().applyQuaternion(this.avatarTrackingReferences.head.transform.rotation);
-			const targetPosition = new Vector3().addVectors(this.avatarTrackingReferences.head.transform.position, headNeckOffset.clone().multiplyScalar(this.headNeckDistance));
+			/* const headNeckOffset = this.headNeckDirectionVector.clone().applyQuaternion(this.avatarTrackingReferences.head.rotation);
+			const targetPosition = new Vector3().addVectors(this.avatarTrackingReferences.head.position, headNeckOffset.clone().multiplyScalar(this.headNeckDistance));
 			this.shoulder.transform.localPosition =
 				new Vector3().addVectors(targetPosition, this.neckShoulderDistance); */
 		}
@@ -194,10 +190,10 @@ class ShoulderPoser extends MonoBehavior
 
 			const targetRotation = new Vector3(0, angle, 0);
 
-			if (this.autoDetectHandsBehindHead)
+			/* if (this.autoDetectHandsBehindHead)
 			{
 				this.detectHandsBehindHead(targetRotation);
-			}
+			} */
 
 			if (this.clampRotationToHead)
 			{
@@ -210,8 +206,8 @@ class ShoulderPoser extends MonoBehavior
 		rotateShoulderRightBase()
 		{
 
-			const heightDiff = this.vrTrackingReferences.head.position.y - PoseManager.Instance.vrSystemOffsetHeight;
-			const relativeHeightDiff = -heightDiff / PoseManager.Instance.playerHeightHmd;
+			const heightDiff = this.vrTrackingReferences.head.position.y - this.poseManager.vrSystemOffsetHeight;
+			const relativeHeightDiff = -heightDiff / this.poseManager.playerHeightHmd;
 
       const hmdRotation = this.vrTrackingReferences.head.rotation;
       hmdRotation.multiply(z180Quaternion);
@@ -228,20 +224,20 @@ class ShoulderPoser extends MonoBehavior
 
 
 			this.shoulder.transform.rotation = new Quaternion().multiplyQuaternions(deltaRot,  this.shoulder.transform.rotation);
-			this.positionShoulderRelative();
+			// this.positionShoulderRelative();
 		}
 
-		positionShoulderRelative()
+		/* positionShoulderRelative()
 		{
 			const deltaRot = Quaternion.AngleAxis(this.shoulderRightRotation, this.shoulder.transform.right);
-			const shoulderHeadDiff = new Vector3().subVectors(this.shoulder.transform.position, this.avatarTrackingReferences.head.transform.position);
-		  // this.shoulder.transform.position = new Vector3().addVectors(shoulderHeadDiff.clone().applyQuaternion(deltaRot), this.avatarTrackingReferences.head.transform.position);
-		}
+			const shoulderHeadDiff = new Vector3().subVectors(this.shoulder.transform.position, this.avatarTrackingReferences.head.position);
+		  // this.shoulder.transform.position = new Vector3().addVectors(shoulderHeadDiff.clone().applyQuaternion(deltaRot), this.avatarTrackingReferences.head.position);
+		} */
 
 		getCombinedDirectionAngleUp()
 		{
-			const leftHand = this.avatarTrackingReferences.leftHand.transform;
-      const rightHand = this.avatarTrackingReferences.rightHand.transform;
+			const leftHand = this.avatarTrackingReferences.leftHand;
+      const rightHand = this.avatarTrackingReferences.rightHand;
 
 			const distanceLeftHand = new Vector3().subVectors(leftHand.position, this.shoulder.transform.position);
 			const distanceRightHand = new Vector3().subVectors(rightHand.position, this.shoulder.transform.position);
@@ -250,6 +246,41 @@ class ShoulderPoser extends MonoBehavior
 			{
 				distanceLeftHand.y = 0;
 				distanceRightHand.y = 0;
+			}
+
+			const hmdRotation = this.vrTrackingReferences.head.rotation;
+      const hmdEuler = new THREE.Euler().setFromQuaternion(hmdRotation, 'YXZ');
+      hmdEuler.x = 0;
+      hmdEuler.z = 0;
+      const hmdFlatRotation = new Quaternion().setFromEuler(hmdEuler);
+      const hmdFlatRotationInverse = hmdFlatRotation.clone().inverse();
+
+			const leftHandBehind = distanceLeftHand.clone().applyQuaternion(hmdFlatRotationInverse);
+			const leftBehind = leftHandBehind.z > 0;
+			const rightHandBehind = distanceRightHand.clone().applyQuaternion(hmdFlatRotationInverse);
+			const rightBehind = rightHandBehind.z > 0;
+
+			if (leftBehind) {
+				/* if (leftHandBehind.x < 0) {
+					leftHandBehind.x *= -1;
+				} else { */
+				  leftHandBehind.x = 0;
+				// }
+				leftHandBehind.y = 0;
+				leftHandBehind.z *= rightBehind ? -2 : -1;
+				leftHandBehind.applyQuaternion(hmdFlatRotation);
+				distanceLeftHand.add(leftHandBehind);
+			}
+			if (rightBehind) {
+				/* if (rightHandBehind.x > 0) {
+					rightHandBehind.x *= -1;
+				} else { */
+				  rightHandBehind.x = 0;
+				// }
+				rightHandBehind.y = 0;
+				rightHandBehind.z *= leftBehind ? -2 : -1;
+				rightHandBehind.applyQuaternion(hmdFlatRotation);
+				distanceRightHand.add(rightHandBehind);
 			}
 
 			const directionLeftHand = distanceLeftHand.normalized;
@@ -262,7 +293,7 @@ class ShoulderPoser extends MonoBehavior
 			return Mathf.Atan2(combinedDirection.x, combinedDirection.z) * 180 / Mathf.PI;
 		}
 
-		detectHandsBehindHead(targetRotation)
+		/* detectHandsBehindHead(targetRotation)
 		{
 			const delta = Mathf.Abs(targetRotation.y - this.lastAngle.y + 360) % 360;
 			if (delta > 150 && delta < 210 && this.lastAngle.magnitude > 0.000001 && !this.clampingHeadRotation)
@@ -276,7 +307,7 @@ class ShoulderPoser extends MonoBehavior
 			{
 				targetRotation.y += 180;
 			}
-		}
+		} */
 
 		clampHeadRotationDeltaUp(targetRotation)
 		{
@@ -305,8 +336,8 @@ class ShoulderPoser extends MonoBehavior
 
 		clampShoulderHandDistance()
 		{
-			const leftHandVector = new Vector3().subVectors(this.avatarTrackingReferences.leftHand.transform.position, this.shoulder.leftShoulderAnchor.position);
-			const rightHandVector = new Vector3().subVectors(this.avatarTrackingReferences.rightHand.transform.position, this.shoulder.rightShoulderAnchor.position);
+			const leftHandVector = new Vector3().subVectors(this.avatarTrackingReferences.leftHand.position, this.shoulder.leftShoulderAnchor.position);
+			const rightHandVector = new Vector3().subVectors(this.avatarTrackingReferences.rightHand.position, this.shoulder.rightShoulderAnchor.position);
 			const leftShoulderHandDistance = leftHandVector.magnitude;
       const rightShoulderHandDistance = rightHandVector.magnitude;
 			this.shoulderDislocated = false;

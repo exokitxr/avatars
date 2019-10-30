@@ -339,8 +339,13 @@ class Transform {
 
 const gameObjects = [];
 class GameObject {
-  constructor(name) {
+  constructor(name, unity) {
+    if (!unity) {
+      throw new Error('bad game object initialization');
+    }
+
     this.name = name;
+    this.unity = unity;
 
     this.transform = new Transform();
     this.components = new Map();
@@ -350,7 +355,7 @@ class GameObject {
   AddComponent(Constructor) {
     let component = this.components.get(Constructor);
     if (component === undefined) {
-      component = new Constructor(this.transform, this.components);
+      component = new Constructor(this.transform, this.components, this.unity);
       this.components.set(Constructor, component);
     }
     return component;
@@ -358,54 +363,23 @@ class GameObject {
   AddChild(child) {
     this.transform.AddChild(child.transform);
   }
-  static clearAll() {
-    gameObjects.length = 0;
-  }
-  static startAll() {
-    for (let i = 0; i < gameObjects.length; i++) {
-      gameObjects[i].components.forEach(value => {
-        value.Awake();
-      });
-    }
-    for (let i = 0; i < gameObjects.length; i++) {
-      gameObjects[i].components.forEach(value => {
-        value.OnEnable();
-      });
-    }
-    for (let i = 0; i < gameObjects.length; i++) {
-      gameObjects[i].components.forEach(value => {
-        value.Start();
-      });
-    }
-  }
-  static updateAll() {
-    for (let i = 0; i < gameObjects.length; i++) {
-      gameObjects[i].components.forEach(value => {
-        value.Update();
-      });
-    }
-    for (let i = 0; i < gameObjects.length; i++) {
-      gameObjects[i].components.forEach(value => {
-        value.LateUpdate();
-      });
-    }
-  }
 }
 
 class MonoBehavior {
-  constructor(transform, components) {
-    if (!transform || !components) {
+  constructor(transform, components, unity) {
+    if (!transform || !components || !unity) {
       throw new Error('bad component initialization');
     }
 
     this.transform = transform;
     this.components = components;
+    this.unity = unity;
   }
 
   GetComponent(Constructor) {
     let component = this.components.get(Constructor);
     if (component === undefined) {
-      component = new Constructor(this.transform, this.components);
+      component = new Constructor(this.transform, this.components, this.unity);
       this.components.set(Constructor, component);
     }
     return component;
@@ -513,6 +487,51 @@ const XRSettings = {
   loadedDeviceName: 'OpenVR',
 };
 
+/* class Unity {
+  constructor() {
+    this.gameObjects = [];
+  }
+
+  makeGameObject(name) {
+    const gameObject = new GameObject(name, this);
+    this.gameObjects.push(gameObject);
+    return gameObject;
+  }
+
+  clearAll() {
+    this.gameObjects.length = 0;
+  }
+  startAll() {
+    for (let i = 0; i < this.gameObjects.length; i++) {
+      this.gameObjects[i].components.forEach(value => {
+        value.Awake && value.Awake();
+      });
+    }
+    for (let i = 0; i < this.gameObjects.length; i++) {
+      this.gameObjects[i].components.forEach(value => {
+        value.OnEnable && value.OnEnable();
+      });
+    }
+    for (let i = 0; i < this.gameObjects.length; i++) {
+      this.gameObjects[i].components.forEach(value => {
+        value.Start && value.Start();
+      });
+    }
+  }
+  updateAll() {
+    for (let i = 0; i < this.gameObjects.length; i++) {
+      this.gameObjects[i].components.forEach(value => {
+        value.Update && value.Update();
+      });
+    }
+    for (let i = 0; i < this.gameObjects.length; i++) {
+      this.gameObjects[i].components.forEach(value => {
+        value.LateUpdate && value.LateUpdate();
+      });
+    }
+  }
+} */
+
 export {
   Vector2,
   Vector3,
@@ -524,4 +543,5 @@ export {
   Mathf,
   PlayerPrefs,
   XRSettings,
+  // Unity,
 };
