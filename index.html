@@ -67,7 +67,7 @@ header nav:not(.selected):hover span {
   padding-top: 50px;
   background-color: #FFF;
 }
-h1, h2, h3, h4, h5, h6, p {
+h1, h2, h3, h4, h5, h6, p, .examples > .multibutton {
   margin: 20px 0;
   padding: 0 20px;
   font-weight: inherit;
@@ -126,26 +126,34 @@ a:hover {
 a:active {
   color: #1976d2;
 }
-.body > .buttons {
+.body > .multibutton {
   position: absolute;
   right: 30px;
   bottom: 30px;
 }
-.buttons {
+.multibutton {
   display: flex;
-  margin: 5px 20px;
+}
+.multibutton .button:not(.first) {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+.multibutton .button:not(.last) {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
 }
 .button {
   display: inline-flex;
+  margin-right: 5px;
   padding: 8px 20px;
   border: 2px solid;
   border-radius: 100px;
   color: #5c6bc0;
   cursor: pointer;
 }
-.button:not(:last-child) {
+/* .button:not(:last-child) {
   margin-right: 20px;
-}
+} */
 .button:not([disabled]):hover {
   background-color: #5c6bc0;
   border-color: #5c6bc0;
@@ -197,6 +205,17 @@ a:active {
 .code:not(.open) {
   display: none;
 }
+input[type=text] {
+  width: 160px;
+  margin: 0 20px;
+  padding: 7px 15px;
+  background-color: #f2f3f5;
+  border: 0;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: inherit;
+  outline: none;
+}
     </style>
     <script src="three.js"></script>
     <script src="OrbitControls.js"></script>
@@ -209,6 +228,7 @@ a:active {
     <script src="untar.js"></script>
     <script src="zip.js"></script>
     <script src="bmfont.js"></script>
+    <script src="multiplayer.js"></script>
   </head>
   <body>
     <div class=body>
@@ -232,19 +252,26 @@ a:active {
           <a href="https://exokitxr.github.io/avatar-models/model4.zip" class="a-avatar">model4.zip</a><br>
           <a href="https://exokitxr.github.io/avatar-models/model5.fbx" class="a-avatar">model5.fbx</a><br>
         </p>
-        <div class=buttons>
+        <div class=multibutton>
           <label for="upload-file-button">
-            <a class=button>Upload file...</a>
+            <a class="button first last">Upload file...</a>
             <input type="file" id="upload-file-button" style="display: none">
           </label>
+        </div>
+        <h3>Multiplayer</h3>
+        <input type=text value="avaer/yatis" placeholder="user/channel" id=channel-input>
+        <div class=multibutton>
+          <nav class="button first last" id=connect-button>Connect</nav>
         </div>
       </div>
 
       <div class=iframe-wrapper id=iframe-wrapper></div>
 
-      <div class=buttons>
-        <a class=button id="enter-xr-button" style="display: none;">Enter XR</a>
-        <a class=button id="no-xr-button" disabled style="display: none;">No XR</a>
+      <div class=multibutton>
+        <a class="button first" id="enable-mic-button" style="display: none;">Enable Mic</a>
+        <a class="button first" id="disable-mic-button" disabled style="display: none;">Disable Mic</a>
+        <a class="button last" id="enter-xr-button" style="display: none;">Enter XR</a>
+        <a class="button last" id="no-xr-button" disabled style="display: none;">No XR</a>
       </div>
     </div>
     <script type=module>
@@ -253,6 +280,8 @@ import './HelioWebXRPolyfill.js';
 // import 'https://web.exokit.org/ew.js';
 import Rig from './vrarmik/Rig.js';
 import {Vector3, Quaternion} from './vrarmik/Unity.js';
+
+const peerPoseUpdateRate = 20;
 
 const scene = new THREE.Scene();
 
@@ -396,7 +425,7 @@ const _pathname2Filename = pathname => {
   const match = pathname.match(/([^\/]+)$/);
   return match && match[1];
 };
-const _loadModelFilesystem = filesystem => {
+const _loadModelFilesystem = async filesystem => {
   const manager = new THREE.LoadingManager();
   manager.setURLModifier(url => {
     // console.log('load url', url);
@@ -433,17 +462,17 @@ const _loadModelFilesystem = filesystem => {
     const modelFileUrl = modelFile.url;
     console.log(`using model file: ${modelFile.pathname}`);
     if (/\.fbx$/.test(modelFile.pathname)) {
-      new THREE.FBXLoader(manager).load(modelFileUrl, object => {
-        _rigModel(object);
-      }, function onprogress() {}, function onerror(err) {
-        console.warn(err);
+      const model = await new Promise((accept, reject) => {
+        new THREE.FBXLoader(manager).load(modelFileUrl, accept, function onprogress() {}, reject);
       });
+      return model;
     } else {
-      new THREE.GLTFLoader(manager).load(modelFileUrl, object => {
-        _rigModel(object.scene);
-      }, xhr => {}, err => {
-        console.warn(err);
+      const model = await new Promise((accept, reject) => {
+        new THREE.GLTFLoader(manager).load(modelFileUrl, object => {
+          accept(object.scene);
+        }, xhr => {}, reject);
       });
+      return model;
     }
   } else {
     throw new Error('no model file in package');
@@ -460,53 +489,51 @@ const _readAsArrayBuffer = blob => new Promise((accept, reject) => {
 const _loadModelUrl = async (href, filename = href) => {
   const fileType = _getFileType(filename);
   if (fileType === 'gltf') {
-    new THREE.GLTFLoader().load(href, object => {
-      _rigModel(object.scene);
-    }, xhr => {}, err => {
-      console.warn(err);
+    const model = await new Promise((accept, reject) => {
+      new THREE.GLTFLoader().load(href, object => {
+        accept(object.scene);
+      }, xhr => {}, reject);
     });
+    return model;
   } else if (fileType === 'fbx') {
-    new THREE.FBXLoader().load(href, object => {
-      _rigModel(object);
-    }, xhr => {}, err => {
-      console.warn(err);
+    const model = await new Promise((accept, reject) => {
+      new THREE.FBXLoader().load(href, accept, xhr => {}, reject);
     });
+    return model;
   } else if (fileType === 'zip') {
     const unitypackageRes = await fetch(href);
     const blob = await unitypackageRes.blob();
-    zip.createReader(new zip.BlobReader(blob), function(reader) {
-      reader.getEntries(async function(entries) {
-        const filesystem = [];
-        for (let i = 0; i < entries.length; i++) {
-          const entry = entries[i];
-          const pathname = entry.filename;
-          const filename = _pathname2Filename(pathname);
-          const blob = await new Promise((accept, reject) => {
-            entry.getData(new zip.BlobWriter('application/octet-stream'), function(blob) {
-              accept(blob);
-            }, function(current, total) {
-              // onprogress callback
-            });
-          });
-          const url = URL.createObjectURL(blob);
-          filesystem.push({
-            pathname,
-            filename,
-            url,
-          });
-          // console.log('got blob', entry, blob, pathname, filename, url);
-        }
-        // console.log('got filesystem', filesystem);
-        _loadModelFilesystem(filesystem);
-
-        /* // close the zip reader
-        reader.close(function() {
-          // onclose callback
-        }); */
-      });
-    }, function(err) {
-      console.warn(err);
+    const reader = await new Promise((accept, reject) => {
+      zip.createReader(new zip.BlobReader(blob), accept, reject);
     });
+    const entries = await new Promise((accept, reject) => {
+      reader.getEntries(accept);
+    });
+
+    const filesystem = [];
+    for (let i = 0; i < entries.length; i++) {
+      const entry = entries[i];
+      const pathname = entry.filename;
+      const filename = _pathname2Filename(pathname);
+      const blob = await new Promise((accept, reject) => {
+        entry.getData(new zip.BlobWriter('application/octet-stream'), function(blob) {
+          accept(blob);
+        }, function(current, total) {
+          // onprogress callback
+        });
+      });
+      const url = URL.createObjectURL(blob);
+      filesystem.push({
+        pathname,
+        filename,
+        url,
+      });
+      // console.log('got blob', entry, blob, pathname, filename, url);
+    }
+    // console.log('got filesystem', filesystem);
+
+    const model = await _loadModelFilesystem(filesystem);
+    return model;
   } else if (fileType === 'tgz') {
     const unitypackageRes = await fetch(href);
     const arraybuffer = await unitypackageRes.arrayBuffer();
@@ -536,19 +563,22 @@ const _loadModelUrl = async (href, filename = href) => {
         }
       }
     }
-    _loadModelFilesystem(filesystem);
+    const model = await _loadModelFilesystem(filesystem);
+    return model;
   } else {
     throw new Error(`unknown file type: ${filename} (${fileType})`);
   }
 };
 
 const _bindUploadFileButton = inputFileEl => {
-  inputFileEl.addEventListener('change', e => {
+  inputFileEl.addEventListener('change', async e => {
     const {files} = e.target;
     if (files.length === 1) {
       const [file] = files;
       const dataUrl = URL.createObjectURL(file);
-      _loadModelUrl(dataUrl, file.name);
+      const model = await _loadModelUrl(dataUrl, file.name);
+      _setLocalModel(model);
+      // modelUrl = dataUrl;
     }
 
     const {parentNode} = inputFileEl;
@@ -577,7 +607,9 @@ window.document.addEventListener('drop', async e => {
       const file = e.dataTransfer.items[i].getAsFile();
       // console.log('got file', e.dataTransfer.items[i], file);
       const dataUrl = URL.createObjectURL(file);
-      _loadModelUrl(dataUrl, file.name);
+      const model = await _loadModelUrl(dataUrl, file.name);
+      _setLocalModel(model);
+      // modelUrl = dataUrl;
     }
   }
 });
@@ -601,14 +633,15 @@ orbitControls.update();
 const aAvatars = Array.from(document.querySelectorAll('.a-avatar'));
 for (let i = 0; i < aAvatars.length; i++) {
   const aAvatar = aAvatars[i];
-  aAvatar.addEventListener('click', e => {
+  aAvatar.addEventListener('click', async e => {
     e.preventDefault();
 
     const {href} = aAvatar;
-    _loadModelUrl(href);
+    const model = await _loadModelUrl(href);
+    _setLocalModel(model);
+    modelUrl = href;
   });
 }
-_loadModelUrl(aAvatars[0].href);
 
 let fontJson, fontTexture;
 const fontPromise = Promise.all([
@@ -681,12 +714,12 @@ const mirrorMesh = (() => {
 
   mesh.onBeforeRender2 = () => {
     if (model && session) {
-      model.visible = true;
+      meshDolly.visible = true;
     }
   };
   mesh.onAfterRender2 = () => {
     if (model && session) {
-      model.visible = false;
+      meshDolly.visible = false;
     }
   };
 
@@ -694,26 +727,29 @@ const mirrorMesh = (() => {
 })();
 scene.add(mirrorMesh);
 
-const userHeight = 1.65;
+const userHeight = 1.7;
 const z180Quaternion = new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), Math.PI);
 
 let rig = null;
 let model = null;
+let modelUrl = '';
 // let heightOffset = 0;
 let heightFactor = 0;
-const _rigModel = object => {
+const _setLocalModel = object => {
   if (rig) {
-    scene.remove(model);
+    meshDolly.remove(model);
     rig = null;
     model = null;
   }
 
   model = object;
-  if (session) {
-    model.visible = false;
-  }
-  rig = new Rig(model);
-  scene.add(model);
+  rig = new Rig(model, {
+    fingers: true,
+    hair: true,
+    visemes: true,
+    microphoneMediaStream,
+  });
+  meshDolly.add(model);
   window.model = model;
 
   // heightOffset = userHeight - rig.height;
@@ -732,7 +768,8 @@ const _rigModel = object => {
 };
 
 const lastPresseds = [false, false];
-const realDateNow = (now => () => now())(Date.now);//() => 2000;
+const dateOffset = Math.floor(Math.random() * 60 * 1000);
+const realDateNow = (now => () => dateOffset + now())(Date.now);
 function animate(timestamp, frame, referenceSpace) {
   if (rig) {
     if (renderer.vr.enabled) {
@@ -755,11 +792,15 @@ function animate(timestamp, frame, referenceSpace) {
             const q = new Quaternion().copy(orientation);
             const pressed = gamepad.buttons[0].pressed;
             const lastPressed = lastPresseds[i];
+            const pointer = gamepad.buttons[0].value;
+            const grip = gamepad.buttons[1].value;
             return {
               position: p,
               rotation: q,
               pressed,
               lastPressed,
+              pointer,
+              grip,
             };
           } else if (matrix) { // old WebXR api
             const p = new Vector3().multiplyScalar(heightFactor);
@@ -769,11 +810,15 @@ function animate(timestamp, frame, referenceSpace) {
               .decompose(p, q, s);
             const pressed = gamepad.buttons[0].pressed;
             const lastPressed = lastPresseds[i];
+            const pointer = gamepad.buttons[0].value;
+            const grip = gamepad.buttons[1].value;
             return {
               position: p,
               rotation: q,
               pressed,
               lastPressed,
+              pointer,
+              grip,
             };
           } else {
             return null;
@@ -783,12 +828,14 @@ function animate(timestamp, frame, referenceSpace) {
         }
       };
 
-      const lg = _getGamepad(0);
+      const lg = _getGamepad(1);
       let li = -1;
       if (lg) {
-        const {position, rotation, pressed, lastPressed} = lg;
+        const {position, rotation, pressed, lastPressed, pointer, grip} = lg;
         rig.inputs.leftGamepad.rotation = rotation;
         rig.inputs.leftGamepad.position = position;
+        rig.inputs.leftGamepad.pointer = pointer;
+        rig.inputs.leftGamepad.grip = grip;
         li = mirrorMesh.getButtonIntersectionIndex(position);
         if (pressed && !lastPressed) {
           if (li !== -1) {
@@ -798,12 +845,14 @@ function animate(timestamp, frame, referenceSpace) {
 
         lastPresseds[0] = pressed;
       }
-      const rg = _getGamepad(1);
+      const rg = _getGamepad(0);
       let ri = -1;
       if (rg) {
-        const {position, rotation, pressed, lastPressed} = rg;
+        const {position, rotation, pressed, lastPressed, pointer, grip} = rg;
         rig.inputs.rightGamepad.rotation = rotation;
         rig.inputs.rightGamepad.position = position;
+        rig.inputs.rightGamepad.pointer = pointer;
+        rig.inputs.rightGamepad.grip = grip;
         ri = mirrorMesh.getButtonIntersectionIndex(position);
         if (pressed && !lastPressed) {
           if (ri !== -1) {
@@ -818,27 +867,35 @@ function animate(timestamp, frame, referenceSpace) {
         mirrorMesh.buttonMeshes[i].material.color.setHex((i === li || i === ri) ? colors.highlight : colors.normal);
       }
     } else {
-      const positionOffset = Math.sin((realDateNow()%10000)/10000*Math.PI*2)*2;
-      const standFactor = rig.height - 0.1*rig.height + Math.sin((realDateNow()%2000)/2000*Math.PI*2)*0.2*rig.height;
-      const rotationAngle = (realDateNow()%5000)/5000*Math.PI*2;
+      const positionOffset = 0;//Math.sin((realDateNow()%10000)/10000*Math.PI*2)*2;
+      const standFactor = rig.height - 0.1*rig.height //+ Math.sin((realDateNow()%2000)/2000*Math.PI*2)*0.2*rig.height;
+      const rotationAngle = 0;//(realDateNow()%5000)/5000*Math.PI*2;
 
       // rig.inputs.hmd.position = new Vector3(positionOffset, 0.6 + standFactor, 0);
       rig.inputs.hmd.position = new Vector3(positionOffset, standFactor, 0);
       rig.inputs.hmd.rotation = new Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), rotationAngle)
+        .multiply(new Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.sin((realDateNow()%2000)/2000*Math.PI*2)*Math.PI*0.2))
         .multiply(new Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.sin((realDateNow()%2000)/2000*Math.PI*2)*Math.PI*0.25));
 
-      rig.inputs.rightGamepad.rotation = new Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), rotationAngle);
-      rig.inputs.rightGamepad.position = new Vector3(positionOffset, rig.height*0.7, 0).add(
-        new Vector3(-rig.shoulderWidth/2, 0, 0).applyQuaternion(rig.inputs.rightGamepad.rotation)
-      ).add(
-        new Vector3(-0.1, 0, -1).normalize().multiplyScalar(rig.rightArmLength*0.7).applyQuaternion(rig.inputs.rightGamepad.rotation)
-      );
+      rig.inputs.rightGamepad.rotation = new Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), rotationAngle - Math.PI*0.2)
+        .multiply(new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), Math.sin((realDateNow()%5000)/5000*Math.PI*2)*Math.PI*0.6));
+      rig.inputs.rightGamepad.position = new Vector3(positionOffset, rig.height*0.7 + Math.sin((realDateNow()%2000)/2000*Math.PI*2)*0.1, 0).add(
+        new Vector3(-rig.shoulderWidth/2, 0, -0.2)//.applyQuaternion(rig.inputs.rightGamepad.rotation)
+      )/*.add(
+        new Vector3(-0.1, 0, -1).normalize().multiplyScalar(rig.rightArmLength*0.4).applyQuaternion(rig.inputs.rightGamepad.rotation)
+      ); */
       rig.inputs.leftGamepad.rotation = new Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), rotationAngle);
-      rig.inputs.leftGamepad.position = new Vector3(positionOffset, rig.height*0.7, 0).add(
+      rig.inputs.leftGamepad.position = new Vector3(positionOffset, rig.height*0.7, -0.2).add(
         new Vector3(rig.shoulderWidth/2, 0, 0).applyQuaternion(rig.inputs.leftGamepad.rotation)
-      ).add(
-        new Vector3(0.1, 0, -1).normalize().multiplyScalar(rig.leftArmLength*0.7).applyQuaternion(rig.inputs.leftGamepad.rotation)
-      );
+      )/*.add(
+        new Vector3(0.1, 0, -1).normalize().multiplyScalar(rig.leftArmLength*0.4).applyQuaternion(rig.inputs.leftGamepad.rotation)
+      );*/
+
+      rig.inputs.leftGamepad.pointer = (Math.sin((Date.now()%10000)/10000*Math.PI*2) + 1) / 2;
+      rig.inputs.leftGamepad.grip = (Math.sin((Date.now()%10000)/10000*Math.PI*2) + 1) / 2;
+
+      rig.inputs.rightGamepad.pointer = (Math.sin((Date.now()%10000)/10000*Math.PI*2) + 1) / 2;
+      rig.inputs.rightGamepad.grip = (Math.sin((Date.now()%10000)/10000*Math.PI*2) + 1) / 2;
     }
 
     rig.update();
@@ -888,6 +945,13 @@ function animate(timestamp, frame, referenceSpace) {
     meshes.footRight.quaternion.copy(rig.outputs.rightFoot.rotation);
   }
 
+  for (let i = 0; i < peerConnections.length; i++) {
+    const peerConnection = peerConnections[i];
+    if (peerConnection.rig) {
+      peerConnection.rig.update();
+    }
+  }
+
   renderer.render(scene, camera);
 }
 renderer.setAnimationLoop(animate);
@@ -895,34 +959,12 @@ renderer.setAnimationLoop(animate);
 let session = null;
 const enterXrButton = document.getElementById('enter-xr-button');
 const noXrButton = document.getElementById('no-xr-button');
-(async () => {
-  let result;
-  if (navigator.xr) {
-    try {
-      await navigator.xr.supportsSession('immersive-vr');
-      result = true;
-    } catch (err) {
-      console.warn(err.stack);
-      result = false;
-    }
-  } else {
-    result = false;
-  }
-  if (result) {
-    console.log('xr available');
-    enterXrButton.style.display = null;
-  } else {
-    console.log('no xr');
-    noXrButton.style.display = null;
-  }
-})();
-
 enterXrButton.addEventListener('click', async () => {
   session = await navigator.xr.requestSession('immersive-vr', {
     requiredFeatures: ['local-floor'],
   });
   if (model) {
-    model.visible = false;
+    meshDolly.visible = false;
   }
   let referenceSpace;
   let referenceSpaceType = '';
@@ -969,6 +1011,254 @@ enterXrButton.addEventListener('click', async () => {
     console.log('loaded root in XR');
   });
 });
+
+let microphoneMediaStream = null;
+const enableMicButton = document.getElementById('enable-mic-button');
+const disableMicButton = document.getElementById('disable-mic-button');
+enableMicButton.addEventListener('click', async () => {
+  try {
+    microphoneMediaStream  = await navigator.mediaDevices.getUserMedia({
+      audio: true,
+    });
+
+    rig.setMicrophoneMediaStream(microphoneMediaStream);
+    if (channelConnection) {
+      channelConnection.setMicrophoneMediaStream(microphoneMediaStream);
+    }
+
+    disableMicButton.style.display = null;
+    enableMicButton.style.display = 'none';
+  } catch (err) {
+    console.warn(err);
+  }
+});
+disableMicButton.addEventListener('click', async () => {
+  rig.setMicrophoneMediaStream(null);
+  if (channelConnection) {
+    channelConnection.setMicrophoneMediaStream(null);
+  }
+  microphoneMediaStream.getAudioTracks().forEach(track => {
+    track.stop();
+  });
+
+  microphoneMediaStream = null;
+  enableMicButton.style.display = null;
+  disableMicButton.style.display = 'none';
+
+  /* try {
+    await navigator.permissions.revoke({
+      name: 'microphone',
+    });
+  } catch(err) {
+    console.warn(err);
+  } */
+});
+
+let channelConnection = null;
+const peerConnections = [];
+const channelInput = document.getElementById('channel-input');
+const connectButton = document.getElementById('connect-button');
+connectButton.addEventListener('click', () => {
+  const channelInputValue = channelInput.value;
+  const match = channelInputValue.match(/^(.+?)\/(.+?)$/);
+  if (match) {
+    const userName = match[1];
+    const channelName = match[2];
+
+    console.log(`connecting to ${userName}/${channelName}`);
+
+    channelConnection = new XRChannelConnection(`wss://presence.exokit.org/?u=${encodeURIComponent(userName)}&c=${encodeURIComponent(channelName)}`, {
+      microphoneMediaStream,
+    });
+    channelConnection.addEventListener('open', () => {
+      console.log('xr channel open');
+    });
+    channelConnection.addEventListener('error', err => {
+      console.warn('xr channel error', err);
+    });
+    channelConnection.addEventListener('peerconnection', e => {
+      const peerConnection = e.detail;
+
+      peerConnection.model = null;
+      peerConnection.rig = null;
+      peerConnection.mediaStream = null;
+      let updateInterval = 0;
+      peerConnection.addEventListener('open', () => {
+        console.log('add peer connection', peerConnection);
+
+        peerConnections.push(peerConnection);
+
+        peerConnection.send(JSON.stringify({
+          method: 'model',
+          url: modelUrl,
+        }));
+
+        updateInterval = setInterval(() => {
+          if (rig) {
+            const hmd = {
+              position: rig.inputs.hmd.position.toArray(),
+              quaternion: rig.inputs.hmd.rotation.toArray(),
+            };
+            const gamepads = [
+              {
+                position: rig.inputs.leftGamepad.position.toArray(),
+                quaternion: rig.inputs.leftGamepad.rotation.toArray(),
+                visible: true,
+              },
+              {
+                position: rig.inputs.rightGamepad.position.toArray(),
+                quaternion: rig.inputs.rightGamepad.rotation.toArray(),
+                visible: true,
+              },
+            ];
+            peerConnection.update(hmd, gamepads);
+          }
+        }, peerPoseUpdateRate);
+      });
+      peerConnection.addEventListener('close', () => {
+        console.log('remove peer connection', peerConnection);
+
+        const index = peerConnections.indexOf(peerConnection);
+        if (index !== -1) {
+          peerConnections.splice(index, 1);
+        }
+
+        clearInterval(updateInterval);
+
+        if (peerConnection.model) {
+          scene.remove(peerConnection.model);
+        }
+      });
+      peerConnection.addEventListener('pose', e => {
+        const {rig} = peerConnection;
+        if (rig) {
+          const {detail: data} = e;
+          const {hmd, gamepads} = data;
+
+          rig.targets.hmd.position.fromArray(hmd.position);
+          rig.targets.hmd.rotation.fromArray(hmd.quaternion);
+
+          rig.targets.gamepads[0].position.fromArray(gamepads[0].position);
+          rig.targets.gamepads[0].rotation.fromArray(gamepads[0].quaternion);
+
+          rig.targets.gamepads[1].position.fromArray(gamepads[1].position);
+          rig.targets.gamepads[1].rotation.fromArray(gamepads[1].quaternion);
+
+          rig.targets.timestamp = Date.now();
+        }
+      });
+      peerConnection.addEventListener('mediastream', e => {
+        console.log('got media stream', e.detail, e.detail.getAudioTracks());
+        peerConnection.mediaStream = e.detail;
+        if (peerConnection.rig) {
+          peerConnection.rig.setMicrophoneMediaStream(peerConnection.mediaStream, {
+            muted: false,
+          });
+        }
+      });
+      peerConnection.addEventListener('message', async e => {
+        console.log('got message', e);
+        const data = JSON.parse(e.data);
+        const {method} = data;
+        if (method === 'model') {
+          const {url} = data;
+          console.log('got peer model', {url});
+
+          peerConnection.model = await _loadModelUrl(url);
+          scene.add(peerConnection.model);
+
+          peerConnection.rig = new Rig(peerConnection.model, {
+            fingers: true,
+            hair: true,
+            visemes: true,
+            microphoneMediaStream: peerConnection.mediaStream,
+            muted: false,
+          });
+
+          peerConnection.rig.targets = {
+            hmd: {
+              position: new Vector3(),
+              rotation: new Quaternion(),
+            },
+            gamepads: [
+              {
+                position: new Vector3(),
+                rotation: new Quaternion(),
+              },
+              {
+                position: new Vector3(),
+                rotation: new Quaternion(),
+              },
+            ],
+            timestamp: Date.now(),
+          };
+          peerConnection.rig.update = (_update => function update() {
+            const now = Date.now();
+            const {timestamp} = peerConnection.rig.targets;
+            const lerpFactor = Math.min(Math.max((now - timestamp) / peerPoseUpdateRate, 0), 1);
+
+            peerConnection.rig.inputs.hmd.rotation = peerConnection.rig.inputs.hmd.rotation.slerp(peerConnection.rig.targets.hmd.rotation, lerpFactor);
+            peerConnection.rig.inputs.hmd.position = peerConnection.rig.inputs.hmd.position.lerp(peerConnection.rig.targets.hmd.position, lerpFactor);
+
+            peerConnection.rig.inputs.leftGamepad.rotation = peerConnection.rig.inputs.leftGamepad.rotation.slerp(peerConnection.rig.targets.gamepads[0].rotation, lerpFactor);
+            peerConnection.rig.inputs.leftGamepad.position = peerConnection.rig.inputs.leftGamepad.position.lerp(peerConnection.rig.targets.gamepads[0].position, lerpFactor);
+
+            peerConnection.rig.inputs.rightGamepad.rotation = peerConnection.rig.inputs.rightGamepad.rotation.slerp(peerConnection.rig.targets.gamepads[1].rotation, lerpFactor);
+            peerConnection.rig.inputs.rightGamepad.position = peerConnection.rig.inputs.rightGamepad.position.lerp(peerConnection.rig.targets.gamepads[1].position, lerpFactor);
+
+            _update.apply(this, arguments);
+          })(peerConnection.rig.update);
+        } else {
+          console.warn('invalid method', {method});
+        }
+      });
+    });
+
+    connectButton.style.display = 'none';
+  } else {
+    console.warn(`invalid user/channel: ${channelInputValue}`);
+  }
+});
+
+(async () => {
+  let result;
+  if (navigator.xr) {
+    try {
+      await navigator.xr.supportsSession('immersive-vr');
+      result = true;
+    } catch (err) {
+      console.warn(err.stack);
+      result = false;
+    }
+  } else {
+    result = false;
+  }
+  if (result) {
+    console.log('xr available');
+    enterXrButton.style.display = null;
+  } else {
+    console.log('no xr');
+    noXrButton.style.display = null;
+  }
+
+  /* const microphonePermission = await navigator.permissions.query({
+    name: 'microphone',
+  });
+  if (microphonePermission.state === 'granted') {
+    microphoneMediaStream  = await navigator.mediaDevices.getUserMedia({
+      audio: true,
+    });
+    disableMicButton.style.display = null;
+  } else {
+    enableMicButton.style.display = null;
+  } */
+  enableMicButton.style.display = null;
+
+  const url = aAvatars[0].href;
+  const model = await _loadModelUrl(url);
+  _setLocalModel(model);
+  modelUrl = url;
+})();
     </script>
   </body>
 </html>
