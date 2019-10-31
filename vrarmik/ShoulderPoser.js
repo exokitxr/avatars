@@ -1,5 +1,4 @@
-import {Vector3, Quaternion, Transform, Helpers, Mathf} from './Unity.js';
-import VectorHelpers from './Utils/VectorHelpers.js';
+import {Vector3, Quaternion, Transform, Helpers} from './Unity.js';
 
 const z180Quaternion = new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), Math.PI);
 
@@ -203,7 +202,7 @@ class ShoulderPoser
 			// }
 
 			// this.shoulder.transform.eulerAngles = targetRotation;
-			this.shoulder.transform.quaternion.setFromEuler(localEuler.set(0, angleY * Mathf.Deg2Rad, 0, Mathf.Order))
+			this.shoulder.transform.quaternion.setFromEuler(localEuler.set(0, angleY, 0, 'YXZ'))
 			  .premultiply(Helpers.getWorldQuaternion(this.shoulder.transform.parent, localQuaternion).inverse());
 			Helpers.updateMatrixMatrixWorld(this.shoulder.transform);
       Helpers.updateMatrixWorld(this.shoulder.leftShoulderAnchor);
@@ -294,7 +293,7 @@ class ShoulderPoser
 
 			// console.log('combined', Mathf.Atan2(combinedDirection.x, combinedDirection.z) * 180 / Mathf.PI, combinedDirection.x, combinedDirection.z);
 
-			return Mathf.Atan2(combinedDirection.x, combinedDirection.z) * 180 / Mathf.PI;
+			return Math.atan2(combinedDirection.x, combinedDirection.z);
 		}
 
 		/* detectHandsBehindHead(targetRotation)
@@ -318,17 +317,17 @@ class ShoulderPoser
 			const hmdRotation = localQuaternion.copy(this.vrTransforms.head.quaternion)
 			  .multiply(z180Quaternion);
 
-			const headUpRotation = (localEuler.setFromQuaternion(hmdRotation, 'YXZ').y * Mathf.Rad2Deg + 360) % 360;
-			const targetUpRotation = (angleY + 360) % 360;
+			const headUpRotation = (localEuler.setFromQuaternion(hmdRotation, 'YXZ').y + Math.PI*2) % (Math.PI*2);
+			const targetUpRotation = (angleY + Math.PI*2) % (Math.PI*2);
 
 			const delta = headUpRotation - targetUpRotation;
 
-			if (delta > this.maxDeltaHeadRotation && delta < 180 || delta < -180 && delta >= -360 + this.maxDeltaHeadRotation)
+			if (delta > this.maxDeltaHeadRotation && delta < Math.PI || delta < -Math.PI && delta >= -Math.PI*2 + this.maxDeltaHeadRotation)
 			{
 				angleY = headUpRotation - this.maxDeltaHeadRotation;
 				// this.clampingHeadRotation = true;
 			}
-			else if (delta < -this.maxDeltaHeadRotation && delta > -180 || delta > 180 && delta < 360 - this.maxDeltaHeadRotation)
+			else if (delta < -this.maxDeltaHeadRotation && delta > -Math.PI || delta > Math.PI && delta < Math.PI*2 - this.maxDeltaHeadRotation)
 			{
 				angleY = headUpRotation + this.maxDeltaHeadRotation;
 				// this.clampingHeadRotation = true;
