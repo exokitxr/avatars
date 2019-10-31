@@ -8,13 +8,13 @@ import {Transform} from './Unity.js';
       /* this.hmd.onchange = () => {
         console.log('change 1', new Error().stack);
       }; */
-      this.leftHand = new Transform();
+      this.head = new THREE.Object3D();
+      this.leftHand = new THREE.Object3D();
       this.leftHand.pointer = 0;
       this.leftHand.grip = 0;
-      this.rightHand = new Transform();
+      this.rightHand = new THREE.Object3D();
       this.rightHand.pointer = 0;
       this.rightHand.grip = 0;
-      this.head = new Transform();
       /* this.head.onchange = () => {
         console.log('change 2', new Error().stack);
       }; */

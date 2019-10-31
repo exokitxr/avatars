@@ -4,6 +4,20 @@ import PoseManager from './PoseManager.js';
 import ShoulderTransforms from './ShoulderTransforms.js';
 import LegsManager from './LegsManager.js';
 
+const zeroVector = new Vector3();
+const oneVector = new Vector3(1, 1, 1);
+const upRotation = new Quaternion().setFromAxisAngle(new Vector3(1, 0, 0), Math.PI/2);
+const leftRotation = new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), Math.PI/2);
+const rightRotation = new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), -Math.PI/2);
+
+const localVector = new Vector3();
+const localVector2 = new Vector3();
+const localVector3 = new Vector3();
+const localVector4 = new Vector3();
+const localQuaternion = new Quaternion();
+const localQuaternion2 = new Quaternion();
+const localMatrix = new THREE.Matrix4();
+
 const _localizeMatrixWorld = bone => {
   bone.matrix.copy(bone.matrixWorld);
   if (bone.parent) {
@@ -50,9 +64,6 @@ class Rig {
     model.updateMatrixWorld(true);
     const skinnedMeshes = [];
 	  model.traverse(o => {
-	    if (o.isMesh) {
-	      o.frustumCulled = false;
-	    }
 	    if (o.isSkinnedMesh) {
         skinnedMeshes.push(o);
 	    }
@@ -90,7 +101,6 @@ class Rig {
       return result;
     };
 	  const tailBones = _getTailBones(skeleton);
-    window.tailBones = tailBones;
     // const tailBones = skeleton.bones.filter(bone => bone.children.length === 0);
 	  const _findClosestParentBone = (bone, pred) => {
       for (; bone; bone = bone.parent) {
@@ -238,7 +248,7 @@ class Rig {
 	  const _findFoot = left => {
 	  	const regexp = left ? /l/i : /r/i;
 	    const legBones = tailBones.map(tailBone => {
-        const legBone = _findFurthestParentBone(tailBone, bone => /leg/i.test(bone.name) && regexp.test(bone.name.replace(/leg/gi, '')));
+        const legBone = _findFurthestParentBone(tailBone, bone => (/leg/i.test(bone.name) || /thigh/i.test(bone.name)) && regexp.test(bone.name.replace(/leg|thigh/gi, '')));
         if (legBone) {
           const distance = _distanceToParentBone(tailBone, legBone);
           if (distance >= 2) {
@@ -257,9 +267,9 @@ class Rig {
         if (diff !== 0) {
           return diff;
         } else {
-        	const aName = a.bone.name.replace(/leg/gi, '');
+        	const aName = a.bone.name.replace(/leg|thigh/gi, '');
         	const aLeftBalance = _countCharacters(aName, /l/i) - _countCharacters(aName, /r/i);
-        	const bName = b.bone.name.replace(/leg/gi, '');
+        	const bName = b.bone.name.replace(/leg|thigh/gi, '');
         	const bLeftBalance = _countCharacters(bName, /l/i) - _countCharacters(bName, /r/i);
         	if (!left) {
         	  return aLeftBalance - bLeftBalance;
@@ -352,15 +362,16 @@ class Rig {
         return Head.getWorldPosition(new Vector3()).add(neckToHeadDiff);
       }
     };
-    const eyeDirection = _getEyePosition().sub(Head.getWorldPosition(new Vector3()));
-	  let flipZ = eyeDirection.z < 0;
+    // const eyeDirection = _getEyePosition().sub(Head.getWorldPosition(new Vector3()));
+    const leftArmDirection = Left_wrist.getWorldPosition(new Vector3()).sub(Head.getWorldPosition(new Vector3()));
+	  const flipZ = leftArmDirection.x < 0;//eyeDirection.z < 0;
     const armatureDirection = new THREE.Vector3(0, 1, 0).applyQuaternion(armature.quaternion);
     const flipY = armatureDirection.z < -0.5;
     const legDirection = new Vector3(0, 0, -1).applyQuaternion(Left_leg.getWorldQuaternion(new Quaternion()).premultiply(armature.quaternion.clone().inverse()));
     const flipLeg = legDirection.y < 0.5;
     const scaleFactor = Head.getWorldPosition(new Vector3())
       .distanceTo(Left_ankle.getWorldPosition(new Vector3())) / Math.abs(armature.scale.y) > 100 ? 100 : 1;
-	  console.log('flip', flipZ, flipY, scaleFactor, eyeDirection.toArray().join(','), armatureDirection.toArray().join(','));
+	  console.log('flip', flipZ, flipY, scaleFactor);
 	  this.flipZ = flipZ;
 	  this.flipY = flipY;
     this.flipLeg = flipLeg;
@@ -462,42 +473,48 @@ class Rig {
       });
     }
 
-    const qr = new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), (flipZ ? -1 : 1) * -Math.PI/2)
+    const qrArm = flipZ ? Left_arm : Right_arm;
+    const qrElbow = flipZ ? Left_elbow : Right_elbow;
+    const qrWrist = flipZ ? Left_wrist : Right_wrist;
+    const qr = new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), -Math.PI/2)
       .premultiply(
         new Quaternion().setFromRotationMatrix(new THREE.Matrix4().lookAt(
           new Vector3(0, 0, 0),
-          Right_elbow.getWorldPosition(new Vector3()).applyMatrix4(armatureMatrixInverse)
-            .sub(Right_arm.getWorldPosition(new Vector3()).applyMatrix4(armatureMatrixInverse))
+          qrElbow.getWorldPosition(new Vector3()).applyMatrix4(armatureMatrixInverse)
+            .sub(qrArm.getWorldPosition(new Vector3()).applyMatrix4(armatureMatrixInverse))
             .applyQuaternion(armatureQuaternion),
           new Vector3(0, 1, 0),
         ))
       );
-    const qr2 = new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), (flipZ ? -1 : 1) * -Math.PI/2)
+    const qr2 = new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), -Math.PI/2)
       .premultiply(
         new Quaternion().setFromRotationMatrix(new THREE.Matrix4().lookAt(
           new Vector3(0, 0, 0),
-          Right_wrist.getWorldPosition(new Vector3()).applyMatrix4(armatureMatrixInverse)
-            .sub(Right_elbow.getWorldPosition(new Vector3()).applyMatrix4(armatureMatrixInverse))
+          qrWrist.getWorldPosition(new Vector3()).applyMatrix4(armatureMatrixInverse)
+            .sub(qrElbow.getWorldPosition(new Vector3()).applyMatrix4(armatureMatrixInverse))
             .applyQuaternion(armatureQuaternion),
           new Vector3(0, 1, 0),
         ))
       );
-    const ql = new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), (flipZ ? -1 : 1) * Math.PI/2)
+    const qlArm = flipZ ? Right_arm : Left_arm;
+    const qlElbow = flipZ ? Right_elbow : Left_elbow;
+    const qlWrist = flipZ ? Right_wrist : Left_wrist;
+    const ql = new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), Math.PI/2)
       .premultiply(
         new Quaternion().setFromRotationMatrix(new THREE.Matrix4().lookAt(
           new Vector3(0, 0, 0),
-          Left_elbow.getWorldPosition(new Vector3()).applyMatrix4(armatureMatrixInverse)
-            .sub(Left_arm.getWorldPosition(new Vector3()).applyMatrix4(armatureMatrixInverse))
+          qlElbow.getWorldPosition(new Vector3()).applyMatrix4(armatureMatrixInverse)
+            .sub(qlArm.getWorldPosition(new Vector3()).applyMatrix4(armatureMatrixInverse))
             .applyQuaternion(armatureQuaternion),
           new Vector3(0, 1, 0),
         ))
       );
-    const ql2 = new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), (flipZ ? -1 : 1) * Math.PI/2)
+    const ql2 = new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), Math.PI/2)
       .premultiply(
         new Quaternion().setFromRotationMatrix(new THREE.Matrix4().lookAt(
           new Vector3(0, 0, 0),
-          Left_wrist.getWorldPosition(new Vector3()).applyMatrix4(armatureMatrixInverse)
-            .sub(Left_elbow.getWorldPosition(new Vector3()).applyMatrix4(armatureMatrixInverse))
+          qlWrist.getWorldPosition(new Vector3()).applyMatrix4(armatureMatrixInverse)
+            .sub(qlElbow.getWorldPosition(new Vector3()).applyMatrix4(armatureMatrixInverse))
             .applyQuaternion(armatureQuaternion),
           new Vector3(0, 1, 0),
         ))
@@ -599,33 +616,34 @@ class Rig {
 	  };
 
 		this.poseManager = new PoseManager(this);
-		this.poseManager.flipY = flipY;
 		this.shoulderTransforms = new ShoulderTransforms(this);
 		this.legsManager = new LegsManager(this);
 
-    this.shoulderTransforms.spine.localPosition = setups.spine;
-    this.shoulderTransforms.transform.localPosition = setups.chest;
-    this.shoulderTransforms.neck.localPosition = setups.neck;
-    this.shoulderTransforms.head.localPosition = setups.head;
-    this.shoulderTransforms.eyes.localPosition = setups.eyes;
+    this.shoulderTransforms.spine.position.copy(setups.spine);
+    this.shoulderTransforms.transform.position.copy(setups.chest);
+    this.shoulderTransforms.neck.position.copy(setups.neck);
+    this.shoulderTransforms.head.position.copy(setups.head);
+    this.shoulderTransforms.eyes.position.copy(setups.eyes);
 
-    this.shoulderTransforms.leftShoulderAnchor.localPosition = setups.leftShoulder;
-    this.shoulderTransforms.leftArm.upperArm.localPosition = setups.leftUpperArm;
-    this.shoulderTransforms.leftArm.lowerArm.localPosition = setups.leftLowerArm;
-    this.shoulderTransforms.leftArm.hand.localPosition = setups.leftHand;
+    this.shoulderTransforms.leftShoulderAnchor.position.copy(setups.leftShoulder);
+    this.shoulderTransforms.leftArm.upperArm.position.copy(setups.leftUpperArm);
+    this.shoulderTransforms.leftArm.lowerArm.position.copy(setups.leftLowerArm);
+    this.shoulderTransforms.leftArm.hand.position.copy(setups.leftHand);
 
-    this.shoulderTransforms.rightShoulderAnchor.localPosition = setups.rightShoulder;
-    this.shoulderTransforms.rightArm.upperArm.localPosition = setups.rightUpperArm;
-    this.shoulderTransforms.rightArm.lowerArm.localPosition = setups.rightLowerArm;
-    this.shoulderTransforms.rightArm.hand.localPosition = setups.rightHand;
+    this.shoulderTransforms.rightShoulderAnchor.position.copy(setups.rightShoulder);
+    this.shoulderTransforms.rightArm.upperArm.position.copy(setups.rightUpperArm);
+    this.shoulderTransforms.rightArm.lowerArm.position.copy(setups.rightLowerArm);
+    this.shoulderTransforms.rightArm.hand.position.copy(setups.rightHand);
 
-    this.legsManager.leftLeg.upperLeg.localPosition = setups.leftUpperLeg;
-    this.legsManager.leftLeg.lowerLeg.localPosition = setups.leftLowerLeg;
-    this.legsManager.leftLeg.foot.localPosition = setups.leftFoot;
+    this.legsManager.leftLeg.upperLeg.position.copy(setups.leftUpperLeg);
+    this.legsManager.leftLeg.lowerLeg.position.copy(setups.leftLowerLeg);
+    this.legsManager.leftLeg.foot.position.copy(setups.leftFoot);
 
-    this.legsManager.rightLeg.upperLeg.localPosition = setups.rightUpperLeg;
-    this.legsManager.rightLeg.lowerLeg.localPosition = setups.rightLowerLeg;
-    this.legsManager.rightLeg.foot.localPosition = setups.rightFoot;
+    this.legsManager.rightLeg.upperLeg.position.copy(setups.rightUpperLeg);
+    this.legsManager.rightLeg.lowerLeg.position.copy(setups.rightLowerLeg);
+    this.legsManager.rightLeg.foot.position.copy(setups.rightFoot);
+
+    this.shoulderTransforms.hips.updateMatrixWorld();
 
     this.height = eyePosition.sub(_averagePoint([modelBones.Left_ankle.getWorldPosition(new Vector3()), modelBones.Right_ankle.getWorldPosition(new Vector3())])).y;
     this.shoulderWidth = modelBones.Left_arm.getWorldPosition(new Vector3()).distanceTo(modelBones.Right_arm.getWorldPosition(new Vector3()));
@@ -691,7 +709,6 @@ class Rig {
 
     this.lastTimestamp = Date.now();
 
-	  this.poseManager.Start();
     this.shoulderTransforms.Start();
     this.legsManager.Start();
 	}
@@ -708,94 +725,14 @@ class Rig {
       if (k === 'Hips') {
         modelBone.position.copy(modelBoneOutput.position).multiplyScalar(this.scaleFactor);
       }
-      modelBone.quaternion
-        .copy(modelBone.initialQuaternion)
+      modelBone.quaternion.multiplyQuaternions(modelBoneOutput.quaternion, modelBone.initialQuaternion)
 
-      if (['Hips', 'Spine', 'Chest', 'Neck', 'Head'].includes(k)) {
-        modelBone.quaternion
-          .premultiply(modelBoneOutput.localRotation)
-      }
-      /* if (k === 'Hips') {
-        modelBone.quaternion
-          .multiply(new Quaternion().setFromAxisAngle(new Vector3(1, 0, 0), Math.PI))
-      } */
-
-      if (['Left_leg'].includes(k)) {
-        modelBone.quaternion
-          .multiply(modelBoneOutput.localRotation)
-          // .multiply(new Quaternion().setFromAxisAngle(new Vector3(1, 0, 0), -Math.PI/2))
-      }
-      if (['Left_knee'].includes(k)) {
-        modelBone.quaternion
-          .multiply(modelBoneOutput.localRotation)
-          // .premultiply(new Quaternion().setFromAxisAngle(new Vector3(1, 0, 0), Math.PI))
-      }
-      if (['Left_ankle'].includes(k)) {
-        modelBone.quaternion
-          .premultiply(modelBoneOutput.localRotation)
-          .multiply(new Quaternion().setFromAxisAngle(new Vector3(1, 0, 0), Math.PI/2))
-      }
-
-      if (['Right_leg'].includes(k)) {
-        modelBone.quaternion
-          .multiply(modelBoneOutput.localRotation)
-          // .multiply(new Quaternion().setFromAxisAngle(new Vector3(1, 0, 0), -Math.PI/2))
-      }
-      if (['Right_knee'].includes(k)) {
-        modelBone.quaternion
-          .multiply(modelBoneOutput.localRotation)
-          // .premultiply(new Quaternion().setFromAxisAngle(new Vector3(1, 0, 0), Math.PI))
-      }
-      if (['Right_ankle'].includes(k)) {
-        modelBone.quaternion
-          .premultiply(modelBoneOutput.localRotation)
-          .multiply(new Quaternion().setFromAxisAngle(new Vector3(1, 0, 0), Math.PI/2))
-      }
-
-      if (['Left_shoulder'].includes(k)) {
-        modelBone.quaternion
-          .multiply(modelBoneOutput.localRotation)
-      }
-      if (['Left_arm'].includes(k)) {
-        modelBone.quaternion
-          .premultiply(modelBoneOutput.localRotation)
-          // .multiply(new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), -Math.PI/2)) // forward
-          // .multiply(new Quaternion().setFromAxisAngle(new Vector3(1, 0, 0), -Math.PI*0.6))
-          // .multiply(new Quaternion().setFromAxisAngle(new Vector3(0, 0, 1), Math.PI/4)) // up
-          // .multiply(new Quaternion().setFromAxisAngle(new Vector3(0, 0, 1), -Math.PI/8)) // down
-      }
-      if (['Left_elbow'].includes(k)) {
-        modelBone.quaternion
-          .premultiply(modelBoneOutput.localRotation)
-      }
-      if (['Left_wrist'].includes(k)) {
-        modelBone.quaternion
-          .premultiply(modelBoneOutput.localRotation)
-          .multiply(new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), Math.PI/2)) // center
-          // .multiply(new Quaternion().setFromAxisAngle(new Vector3(0, 0, 1), Math.PI/4)) // up
-      }
-
-      if (['Right_shoulder'].includes(k)) {
-        modelBone.quaternion
-          .multiply(modelBoneOutput.localRotation)
-      }
-      if (['Right_arm'].includes(k)) {
-        modelBone.quaternion
-          .premultiply(modelBoneOutput.localRotation)
-          // .multiply(new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), -Math.PI/2)) // forward
-          // .multiply(new Quaternion().setFromAxisAngle(new Vector3(1, 0, 0), -Math.PI*0.6))
-          // .multiply(new Quaternion().setFromAxisAngle(new Vector3(0, 0, 1), Math.PI/4)) // up
-          // .multiply(new Quaternion().setFromAxisAngle(new Vector3(0, 0, 1), Math.PI/8)) // down
-      }
-      if (['Right_elbow'].includes(k)) {
-        modelBone.quaternion
-          .premultiply(modelBoneOutput.localRotation)
-      }
-      if (['Right_wrist'].includes(k)) {
-        modelBone.quaternion
-          .premultiply(modelBoneOutput.localRotation)
-          .multiply(new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), -Math.PI/2)) // center
-          // .multiply(new Quaternion().setFromAxisAngle(new Vector3(0, 0, 1), -Math.PI/8)) // up
+      if (k === 'Left_ankle' || k === 'Right_ankle') {
+        modelBone.quaternion.multiply(upRotation);
+      } else if (k === 'Left_wrist') {
+        modelBone.quaternion.multiply(leftRotation); // center
+      } else if (k === 'Right_wrist') {
+        modelBone.quaternion.multiply(rightRotation); // center
       }
       modelBone.updateMatrixWorld();
     }
@@ -811,20 +748,15 @@ class Rig {
         for (const k in fingerBones) {
           const fingerBone = fingerBones[k];
           if (fingerBone) {
-            const axis = new Vector3();
-            let angle;
             if (k === 'thumb') {
-              axis.set(0, left ? 1 : -1, 0);
-              angle = gamepadInput.grip * Math.PI*0.25;
+              localQuaternion.setFromAxisAngle(localVector.set(0, left ? 1 : -1, 0), gamepadInput.grip * Math.PI*0.25);
             } else if (k === 'index') {
-              axis.set(0, 0, left ? -1 : 1);
-              angle = gamepadInput.pointer * Math.PI*0.5;
+              localQuaternion.setFromAxisAngle(localVector.set(0, 0, left ? -1 : 1), gamepadInput.pointer * Math.PI*0.5);
             } else {
-              axis.set(0, 0, left ? -1 : 1);
-              angle = gamepadInput.grip * Math.PI*0.5;
+              localQuaternion.setFromAxisAngle(localVector.set(0, 0, left ? -1 : 1), gamepadInput.grip * Math.PI*0.5);
             }
             fingerBone.traverse(subFingerBone => {
-              subFingerBone.quaternion.setFromAxisAngle(axis, angle);
+              subFingerBone.quaternion.copy(localQuaternion);
             });
           }
         }
@@ -834,18 +766,19 @@ class Rig {
     }
 
     if (this.options.hair) {
+      const hipsRotation = this.modelBones.Hips.quaternion;
       const _processHairBone = (hairBone, children) => {
-        const p = new Vector3().setFromMatrixPosition(hairBone.matrixWorld);
+        const p = localVector.setFromMatrixPosition(hairBone.matrixWorld);
 
         for (let i = 0; i < children.length; i++) {
           const childHairBone = children[i];
 
-          const px = new Vector3().setFromMatrixPosition(childHairBone.matrixWorld);
+          const px = localVector2.setFromMatrixPosition(childHairBone.matrixWorld);
           const hairDistance = px.distanceTo(p);
-          const hairDirection = px.clone().sub(p).normalize();
+          const hairDirection = localVector3.copy(px).sub(p).normalize();
 
           if (hairDistance > childHairBone.length * 2) {
-            px.copy(p).add(hairDirection.clone().multiplyScalar(childHairBone.length * 2));
+            px.copy(p).add(localVector4.copy(hairDirection).multiplyScalar(childHairBone.length * 2));
           }
 
           const l = childHairBone.velocity.length();
@@ -853,21 +786,24 @@ class Rig {
             childHairBone.velocity.multiplyScalar(0.05/l);
           }
 
-          childHairBone.velocity.add(hairDirection.clone().multiplyScalar(-(hairDistance - childHairBone.length) * 0.1 * timeDiff/32));
-          childHairBone.velocity.add(new Vector3(0, -9.8, 0).multiplyScalar(0.0002 * timeDiff/32));
-          childHairBone.velocity.add(childHairBone.worldParentOffset.clone().applyQuaternion(this.modelBones.Hips.quaternion).multiplyScalar(0.03 * timeDiff/32));
-          childHairBone.velocity.lerp(new Vector3(), 0.2 * timeDiff/32);
+          childHairBone.velocity.add(localVector4.copy(hairDirection).multiplyScalar(-(hairDistance - childHairBone.length) * 0.1 * timeDiff/32));
+          childHairBone.velocity.add(localVector4.set(0, -9.8, 0).multiplyScalar(0.0002 * timeDiff/32));
+          childHairBone.velocity.add(localVector4.copy(childHairBone.worldParentOffset).applyQuaternion(hipsRotation).multiplyScalar(0.03 * timeDiff/32));
+          childHairBone.velocity.lerp(zeroVector, 0.2 * timeDiff/32);
 
-          const p2 = px.clone().add(childHairBone.velocity.clone().multiplyScalar(1));
-          const q2 = childHairBone.initialWorldQuaternion.clone().premultiply(
-            new Quaternion().setFromRotationMatrix(new THREE.Matrix4().lookAt(
-              new Vector3(0, 0, 0),
+          const p2 = px.clone().add(childHairBone.velocity);
+          const q2 = localQuaternion.multiplyQuaternions(
+            localQuaternion2.setFromRotationMatrix(localMatrix.lookAt(
+              zeroVector,
               hairDirection,
-              new Vector3(0, 0, -1).applyQuaternion(this.modelBones.Hips.quaternion),
-            ))
+              localVector4.set(0, 0, -1).applyQuaternion(hipsRotation),
+            )),
+            childHairBone.initialWorldQuaternion
           );
-          const s2 = new Vector3(1, 1, 1);
-          childHairBone.matrixWorld.compose(p2, q2, s2);
+          childHairBone.matrixWorld.compose(p2, q2, oneVector);
+        }
+        for (let i = 0; i < children.length; i++) {
+          const childHairBone = children[i];
           _processHairBone(childHairBone, childHairBone.children);
         }
       };

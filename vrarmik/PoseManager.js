@@ -1,28 +1,22 @@
 import VRTrackingReferences from './VRTrackingReferences.js';
-import AvatarVRTrackingReferences from './AvatarVRTrackingReferences.js';
-import {Transform, XRSettings} from './Unity.js';
+import {Transform} from './Unity.js';
 
 class PoseManager
 	{
 		constructor(rig) {
-      this.transform = new Transform();
-
 			this.vrTransforms = new VRTrackingReferences();
-			this.avatarVrTransforms = new AvatarVRTrackingReferences(this);
 		  // this.OnCalibrateListener = null;
 
       // Oculus uses a different reference position -> 0 is the reference head position if the user is standing in the middle of the room. 
       // In OpenVR, the 0 position is the ground position and the user is then at (0, playerHeightHmd, 0) if he is in the middle of the room, so I need to correct this for shoulder calculation 
-      this.vrSystemOffsetHeight = 0.0;
+      // this.vrSystemOffsetHeight = 0.0;
 
 			this.referencePlayerHeightHmd = 1.7;
 			this.referencePlayerWidthWrist = 1.39;
 			this.playerHeightHmd = 1.70;
 			this.playerWidthWrist = 1.39;
-			this.playerWidthShoulders = 0.31;
-      this.loadPlayerSizeOnAwake = false;
-
-      this.flipY = false;
+			// this.playerWidthShoulders = 0.31;
+      // this.loadPlayerSizeOnAwake = false;
 
       // PoseManager.Instance = this;
     }
@@ -39,25 +33,21 @@ class PoseManager
 			}
 		} */
 
-		Start()
+		/* Start()
 		{
       if (this.loadPlayerSizeOnAwake)
       {
           this.loadPlayerSize();
       }
-      const device = XRSettings.loadedDeviceName;
-      this.vrSystemOffsetHeight = /*string.IsNullOrEmpty(device) || */device == "OpenVR" ? 0 : this.playerHeightHmd;
-    }
+      // this.vrSystemOffsetHeight = 0;
 
-		/* Start()
-		{
 			onCalibrate += OnCalibrate;
 		}
 
 		OnCalibrate()
 		{
 			this.playerHeightHmd = Camera.main.transform.position.y;
-		} */
+		}
 
 		loadPlayerWidthShoulders()
 		{
@@ -69,9 +59,9 @@ class PoseManager
 			PlayerPrefs.SetFloat("VRArmIK_PlayerWidthShoulders", width);
 		}
 
-		/* calibrateIK()
+		calibrateIK()
 		{
-			this.playerWidthWrist = (this.vrTransforms.leftHand.position - this.vrTransforms.rightHand.position).magnitude;
+			this.playerWidthWrist = this.vrTransforms.leftHand.position.clone().sub(this.vrTransforms.rightHand.position).magnitude;
 			this.playerHeightHmd = this.vrTransforms.hmd.position.y;
 			this.savePlayerSize(this.playerHeightHmd, this.playerWidthWrist);
 		}
@@ -82,13 +72,13 @@ class PoseManager
 			PlayerPrefs.SetFloat("VRArmIK_PlayerWidthWrist", this.widthWrist);
 			this.loadPlayerSize();
 			this.onCalibrate && this.onCalibrate.Invoke();
-		} */
+		}
 
 		loadPlayerSize()
 		{
 			this.playerHeightHmd = PlayerPrefs.GetFloat("VRArmIK_PlayerHeightHmd", this.referencePlayerHeightHmd);
 			this.playerWidthWrist = PlayerPrefs.GetFloat("VRArmIK_PlayerWidthWrist", this.referencePlayerWidthWrist);
-		}
+		} */
 	}
 	// PoseManager.Instance = null;
 

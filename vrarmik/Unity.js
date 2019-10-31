@@ -243,6 +243,16 @@ class Transform {
     this._localScale.copy(localScale);
   }
 
+  get matrix() {
+    this.updateLocalMatrix();
+    return this._matrix.clone();
+  }
+
+  get matrixWorld() {
+    this.updateMatrixWorld();
+    return this._matrixWorld.clone();
+  }
+
   get parent() {
     return this._parent;
   }
@@ -399,13 +409,14 @@ class MonoBehavior {
   LateUpdate() {}
 }
 
-const Time = {
+/* const Time = {
   deltaTime: 1/90,
-};
+}; */
 
 const Mathf = {
   Deg2Rad: DEG2RAD,
   Rad2Deg: RAD2DEG,
+  Order: ORDER,
   PI: Math.PI,
   Clamp(v, min, max) {
     return Math.min(Math.max(v, min), max);
@@ -483,9 +494,9 @@ const PlayerPrefs = {
   },
 };
 
-const XRSettings = {
+/* const XRSettings = {
   loadedDeviceName: 'OpenVR',
-};
+}; */
 
 /* class Unity {
   constructor() {
@@ -531,6 +542,30 @@ const XRSettings = {
     }
   }
 } */
+const localVector = new Vector3();
+const localVector2 = new Vector3();
+const Helpers = {
+  getWorldPosition(o, v) {
+    return v.setFromMatrixPosition(o.matrixWorld);
+  },
+  getWorldQuaternion(o, q) {
+    o.matrixWorld.decompose(localVector, q, localVector2);
+    return q;
+  },
+  getWorldScale(o, v) {
+    return v.setFromMatrixScale(o.matrixWorld);
+  },
+  updateMatrix(o) {
+    o.matrix.compose(o.position, o.quaternion, o.scale);
+  },
+  updateMatrixWorld(o) {
+    o.matrixWorld.multiplyMatrices(o.parent.matrixWorld, o.matrix);
+  },
+  updateMatrixMatrixWorld(o) {
+    o.matrix.compose(o.position, o.quaternion, o.scale);
+    o.matrixWorld.multiplyMatrices(o.parent.matrixWorld, o.matrix);
+  },
+};
 
 export {
   Vector2,
@@ -539,9 +574,10 @@ export {
   Transform,
   GameObject,
   MonoBehavior,
-  Time,
+  // Time,
   Mathf,
   PlayerPrefs,
-  XRSettings,
+  // XRSettings,
   // Unity,
+  Helpers,
 };
