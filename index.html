@@ -251,6 +251,7 @@ input[type=text] {
           <a href="https://exokitxr.github.io/avatar-models/model3.unitypackage" class="a-avatar">model3.unitypackage</a><br>
           <a href="https://exokitxr.github.io/avatar-models/model4.zip" class="a-avatar">model4.zip</a><br>
           <a href="https://exokitxr.github.io/avatar-models/model5.fbx" class="a-avatar">model5.fbx</a><br>
+          <a href="https://exokitxr.github.io/avatar-models/model6.zip" class="a-avatar">model6.zip</a><br>
         </p>
         <div class=multibutton>
           <label for="upload-file-button">
@@ -282,6 +283,10 @@ import Rig from './vrarmik/Rig.js';
 import {Vector3, Quaternion} from './vrarmik/Unity.js';
 
 const peerPoseUpdateRate = 20;
+
+const localVector = new Vector3();
+const localVector2 = new Vector3();
+const localQuaternion = new Quaternion();
 
 const scene = new THREE.Scene();
 
@@ -373,22 +378,22 @@ const meshes = {
   head: _makeCubeMesh(0xFF8080),
 
   chest: _makeCubeMesh(0xFFFF00),
-  shoulderLeft: _makeCubeMesh(0x00FF00),
-  shoulderRight: _makeCubeMesh(0x008000),
-  upperArmLeft: _makeCubeMesh(0x00FFFF),
-  upperArmRight: _makeCubeMesh(0x008080),
-  lowerArmLeft: _makeCubeMesh(0x0000FF),
-  lowerArmRight: _makeCubeMesh(0x000080),
-  handLeft: _makeCubeMesh(0xFFFFFF),
-  handRight: _makeCubeMesh(0x808080),
+  leftShoulder: _makeCubeMesh(0x00FF00),
+  rightShoulder: _makeCubeMesh(0x008000),
+  leftUpperArm: _makeCubeMesh(0x00FFFF),
+  rightUpperArm: _makeCubeMesh(0x008080),
+  leftLowerArm: _makeCubeMesh(0x0000FF),
+  rightLowerArm: _makeCubeMesh(0x000080),
+  leftHand: _makeCubeMesh(0xFFFFFF),
+  rightHand: _makeCubeMesh(0x808080),
 
   hips: _makeCubeMesh(0xFF0000),
-  upperLegLeft: _makeCubeMesh(0xFFFF00),
-  upperLegRight: _makeCubeMesh(0x808000),
-  lowerLegLeft: _makeCubeMesh(0x00FF00),
-  lowerLegRight: _makeCubeMesh(0x008000),
-  footLeft: _makeCubeMesh(0xFFFFFF),
-  footRight: _makeCubeMesh(0x808080),
+  leftUpperLeg: _makeCubeMesh(0xFFFF00),
+  rightUpperLeg: _makeCubeMesh(0x808000),
+  leftLowerLeg: _makeCubeMesh(0x00FF00),
+  rightLowerLeg: _makeCubeMesh(0x008000),
+  leftFoot: _makeCubeMesh(0xFFFFFF),
+  rightFoot: _makeCubeMesh(0x808080),
 };
 const meshDolly = new THREE.Object3D();
 for (const k in meshes) {
@@ -425,17 +430,27 @@ const _pathname2Filename = pathname => {
   const match = pathname.match(/([^\/]+)$/);
   return match && match[1];
 };
+const _filename2Ext = filename => {
+  const match = filename.match(/\.([^\.]+)$/);
+  return match ? match[1] : null;
+};
 const _loadModelFilesystem = async filesystem => {
   const manager = new THREE.LoadingManager();
   manager.setURLModifier(url => {
-    // console.log('load url', url);
     const match = url.match(/([^\/]+)$/);
     if (match) {
       const filename = match[1];
       const file = filesystem.find(file => file.filename === filename);
       if (file) {
-        // console.log('replace url', url, file.url);
         url = file.url;
+      } else {
+        const ext = _filename2Ext(filename);
+        if (ext) {
+          const file = filesystem.find(file => file.ext === ext);
+          if (file) {
+            url = file.url;
+          }
+        }
       }
     }
     return url;
@@ -486,6 +501,17 @@ const _readAsArrayBuffer = blob => new Promise((accept, reject) => {
   reader.onerror = reject;
   reader.readAsArrayBuffer(blob);
 });
+const _patchModel = model => {
+  model.traverse(o => {
+    if (o.isMesh) {
+      o.frustumCulled = false;
+
+      if (o.material.opacity === 0) {
+        o.material.opacity = 1;
+      }
+    }
+  });
+};
 const _loadModelUrl = async (href, filename = href) => {
   const fileType = _getFileType(filename);
   if (fileType === 'gltf') {
@@ -494,11 +520,13 @@ const _loadModelUrl = async (href, filename = href) => {
         accept(object.scene);
       }, xhr => {}, reject);
     });
+    _patchModel(model);
     return model;
   } else if (fileType === 'fbx') {
     const model = await new Promise((accept, reject) => {
       new THREE.FBXLoader().load(href, accept, xhr => {}, reject);
     });
+    _patchModel(model);
     return model;
   } else if (fileType === 'zip') {
     const unitypackageRes = await fetch(href);
@@ -515,17 +543,15 @@ const _loadModelUrl = async (href, filename = href) => {
       const entry = entries[i];
       const pathname = entry.filename;
       const filename = _pathname2Filename(pathname);
+      const ext = _filename2Ext(filename);
       const blob = await new Promise((accept, reject) => {
-        entry.getData(new zip.BlobWriter('application/octet-stream'), function(blob) {
-          accept(blob);
-        }, function(current, total) {
-          // onprogress callback
-        });
+        entry.getData(new zip.BlobWriter('application/octet-stream'), accept, function onprogress(current, total) {});
       });
       const url = URL.createObjectURL(blob);
       filesystem.push({
         pathname,
         filename,
+        ext,
         url,
       });
       // console.log('got blob', entry, blob, pathname, filename, url);
@@ -533,6 +559,7 @@ const _loadModelUrl = async (href, filename = href) => {
     // console.log('got filesystem', filesystem);
 
     const model = await _loadModelFilesystem(filesystem);
+    _patchModel(model);
     return model;
   } else if (fileType === 'tgz') {
     const unitypackageRes = await fetch(href);
@@ -564,6 +591,7 @@ const _loadModelUrl = async (href, filename = href) => {
       }
     }
     const model = await _loadModelFilesystem(filesystem);
+    _patchModel(model);
     return model;
   } else {
     throw new Error(`unknown file type: ${filename} (${fileType})`);
@@ -778,43 +806,46 @@ function animate(timestamp, frame, referenceSpace) {
       const {inputSources} = session;
       const gamepads = navigator.getGamepads();
 
-      rig.inputs.hmd.position = vrCamera.position.clone().multiplyScalar(heightFactor);
-      rig.inputs.hmd.rotation = vrCamera.quaternion;
+      rig.inputs.hmd.position.copy(vrCamera.position).multiplyScalar(heightFactor);
+      rig.inputs.hmd.quaternion.copy(vrCamera.quaternion);
 
       const _getGamepad = i => {
-        const inputSource = inputSources[i];
+        const handedness = i === 0 ? 'left' : 'right';
+        const inputSource = inputSources.find(inputSource => inputSource.handedness === handedness);
         let pose, gamepad;
         if (inputSource && (pose = frame.getPose(inputSource.targetRaySpace, referenceSpace)) && (gamepad = inputSource.gamepad || gamepads[i])) {
           const {transform} = pose;
           const {position, orientation, matrix} = transform;
           if (position) { // new WebXR api
-            const p = new Vector3().copy(position).multiplyScalar(heightFactor);
-            const q = new Quaternion().copy(orientation);
+            const p = localVector.copy(position).multiplyScalar(heightFactor);
+            const q = localQuaternion.copy(orientation);
             const pressed = gamepad.buttons[0].pressed;
             const lastPressed = lastPresseds[i];
             const pointer = gamepad.buttons[0].value;
             const grip = gamepad.buttons[1].value;
             return {
               position: p,
-              rotation: q,
+              quaternion: q,
               pressed,
               lastPressed,
               pointer,
               grip,
             };
           } else if (matrix) { // old WebXR api
-            const p = new Vector3().multiplyScalar(heightFactor);
-            const q = new Quaternion();
+            const p = localVector;
+            const q = localQuaternion;
+            const s = localVector2;
             localMatrix
               .fromArray(transform.matrix)
               .decompose(p, q, s);
+            p.multiplyScalar(heightFactor);
             const pressed = gamepad.buttons[0].pressed;
             const lastPressed = lastPresseds[i];
             const pointer = gamepad.buttons[0].value;
             const grip = gamepad.buttons[1].value;
             return {
               position: p,
-              rotation: q,
+              quaternion: q,
               pressed,
               lastPressed,
               pointer,
@@ -831,9 +862,9 @@ function animate(timestamp, frame, referenceSpace) {
       const lg = _getGamepad(1);
       let li = -1;
       if (lg) {
-        const {position, rotation, pressed, lastPressed, pointer, grip} = lg;
-        rig.inputs.leftGamepad.rotation = rotation;
-        rig.inputs.leftGamepad.position = position;
+        const {position, quaternion, pressed, lastPressed, pointer, grip} = lg;
+        rig.inputs.leftGamepad.quaternion.copy(quaternion);
+        rig.inputs.leftGamepad.position.copy(position);
         rig.inputs.leftGamepad.pointer = pointer;
         rig.inputs.leftGamepad.grip = grip;
         li = mirrorMesh.getButtonIntersectionIndex(position);
@@ -848,9 +879,9 @@ function animate(timestamp, frame, referenceSpace) {
       const rg = _getGamepad(0);
       let ri = -1;
       if (rg) {
-        const {position, rotation, pressed, lastPressed, pointer, grip} = rg;
-        rig.inputs.rightGamepad.rotation = rotation;
-        rig.inputs.rightGamepad.position = position;
+        const {position, quaternion, pressed, lastPressed, pointer, grip} = rg;
+        rig.inputs.rightGamepad.quaternion.copy(quaternion);
+        rig.inputs.rightGamepad.position.copy(position);
         rig.inputs.rightGamepad.pointer = pointer;
         rig.inputs.rightGamepad.grip = grip;
         ri = mirrorMesh.getButtonIntersectionIndex(position);
@@ -867,28 +898,28 @@ function animate(timestamp, frame, referenceSpace) {
         mirrorMesh.buttonMeshes[i].material.color.setHex((i === li || i === ri) ? colors.highlight : colors.normal);
       }
     } else {
-      const positionOffset = 0;//Math.sin((realDateNow()%10000)/10000*Math.PI*2)*2;
-      const standFactor = rig.height - 0.1*rig.height //+ Math.sin((realDateNow()%2000)/2000*Math.PI*2)*0.2*rig.height;
-      const rotationAngle = 0;//(realDateNow()%5000)/5000*Math.PI*2;
+      const positionOffset = Math.sin((realDateNow()%10000)/10000*Math.PI*2)*2;
+      const standFactor = rig.height - 0.1*rig.height + Math.sin((realDateNow()%2000)/2000*Math.PI*2)*0.2*rig.height;
+      const rotationAngle = (realDateNow()%5000)/5000*Math.PI*2;
 
-      // rig.inputs.hmd.position = new Vector3(positionOffset, 0.6 + standFactor, 0);
-      rig.inputs.hmd.position = new Vector3(positionOffset, standFactor, 0);
-      rig.inputs.hmd.rotation = new Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), rotationAngle)
+      // rig.inputs.hmd.position.set(positionOffset, 0.6 + standFactor, 0);
+      rig.inputs.hmd.position.set(positionOffset, standFactor, 0);
+      rig.inputs.hmd.quaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), rotationAngle)
         .multiply(new Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.sin((realDateNow()%2000)/2000*Math.PI*2)*Math.PI*0.2))
         .multiply(new Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.sin((realDateNow()%2000)/2000*Math.PI*2)*Math.PI*0.25));
 
-      rig.inputs.rightGamepad.rotation = new Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), rotationAngle - Math.PI*0.2)
-        .multiply(new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), Math.sin((realDateNow()%5000)/5000*Math.PI*2)*Math.PI*0.6));
-      rig.inputs.rightGamepad.position = new Vector3(positionOffset, rig.height*0.7 + Math.sin((realDateNow()%2000)/2000*Math.PI*2)*0.1, 0).add(
-        new Vector3(-rig.shoulderWidth/2, 0, -0.2)//.applyQuaternion(rig.inputs.rightGamepad.rotation)
+      rig.inputs.rightGamepad.quaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), rotationAngle)
+        // .multiply(new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), Math.sin((realDateNow()%5000)/5000*Math.PI*2)*Math.PI*0.6));
+      rig.inputs.rightGamepad.position.set(positionOffset, rig.height*0.7 + Math.sin((realDateNow()%2000)/2000*Math.PI*2)*0.1, 0).add(
+        new Vector3(-rig.shoulderWidth/2, 0, -0.2).applyQuaternion(rig.inputs.rightGamepad.quaternion)
       )/*.add(
-        new Vector3(-0.1, 0, -1).normalize().multiplyScalar(rig.rightArmLength*0.4).applyQuaternion(rig.inputs.rightGamepad.rotation)
+        new Vector3(-0.1, 0, -1).normalize().multiplyScalar(rig.rightArmLength*0.4).applyQuaternion(rig.inputs.rightGamepad.quaternion)
       ); */
-      rig.inputs.leftGamepad.rotation = new Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), rotationAngle);
-      rig.inputs.leftGamepad.position = new Vector3(positionOffset, rig.height*0.7, -0.2).add(
-        new Vector3(rig.shoulderWidth/2, 0, 0).applyQuaternion(rig.inputs.leftGamepad.rotation)
+      rig.inputs.leftGamepad.quaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), rotationAngle);
+      rig.inputs.leftGamepad.position.set(positionOffset, rig.height*0.7, 0).add(
+        new Vector3(rig.shoulderWidth/2, 0, -0.2).applyQuaternion(rig.inputs.leftGamepad.quaternion)
       )/*.add(
-        new Vector3(0.1, 0, -1).normalize().multiplyScalar(rig.leftArmLength*0.4).applyQuaternion(rig.inputs.leftGamepad.rotation)
+        new Vector3(0.1, 0, -1).normalize().multiplyScalar(rig.leftArmLength*0.4).applyQuaternion(rig.inputs.leftGamepad.quaternion)
       );*/
 
       rig.inputs.leftGamepad.pointer = (Math.sin((Date.now()%10000)/10000*Math.PI*2) + 1) / 2;
@@ -900,49 +931,14 @@ function animate(timestamp, frame, referenceSpace) {
 
     rig.update();
 
-    meshes.eyes.position.copy(rig.outputs.eyes.position);
-    meshes.eyes.quaternion.copy(rig.outputs.eyes.rotation);
-
-    meshes.head.position.copy(rig.outputs.head.position);
-    meshes.head.quaternion.copy(rig.outputs.head.rotation);
-
-    meshes.chest.position.copy(rig.outputs.chest.position);
-    meshes.chest.quaternion.copy(rig.outputs.chest.rotation);
-
-    meshes.shoulderLeft.position.copy(rig.outputs.leftShoulder.position);
-    meshes.shoulderLeft.quaternion.copy(rig.outputs.leftShoulder.rotation);
-    meshes.upperArmLeft.position.copy(rig.outputs.leftUpperArm.position);
-    meshes.upperArmLeft.quaternion.copy(rig.outputs.leftUpperArm.rotation);
-    meshes.lowerArmLeft.position.copy(rig.outputs.leftLowerArm.position);
-    meshes.lowerArmLeft.quaternion.copy(rig.outputs.leftLowerArm.rotation);
-    meshes.handLeft.position.copy(rig.outputs.leftHand.position);
-    meshes.handLeft.quaternion.copy(rig.outputs.leftHand.rotation);
-
-    meshes.shoulderRight.position.copy(rig.outputs.rightShoulder.position);
-    meshes.shoulderRight.quaternion.copy(rig.outputs.rightShoulder.rotation);
-    meshes.upperArmRight.position.copy(rig.outputs.rightUpperArm.position);
-    meshes.upperArmRight.quaternion.copy(rig.outputs.rightUpperArm.rotation);
-    meshes.lowerArmRight.position.copy(rig.outputs.rightLowerArm.position);
-    meshes.lowerArmRight.quaternion.copy(rig.outputs.rightLowerArm.rotation);
-    meshes.handRight.position.copy(rig.outputs.rightHand.position);
-    meshes.handRight.quaternion.copy(rig.outputs.rightHand.rotation);
-
-    meshes.hips.position.copy(rig.outputs.hips.position);
-    meshes.hips.quaternion.copy(rig.outputs.hips.rotation);
-
-    meshes.upperLegLeft.position.copy(rig.outputs.leftUpperLeg.position);
-    meshes.upperLegLeft.quaternion.copy(rig.outputs.leftUpperLeg.rotation);
-    meshes.lowerLegLeft.position.copy(rig.outputs.leftLowerLeg.position);
-    meshes.lowerLegLeft.quaternion.copy(rig.outputs.leftLowerLeg.rotation);
-    meshes.footLeft.position.copy(rig.outputs.leftFoot.position);
-    meshes.footLeft.quaternion.copy(rig.outputs.leftFoot.rotation);
-
-    meshes.upperLegRight.position.copy(rig.outputs.rightUpperLeg.position);
-    meshes.upperLegRight.quaternion.copy(rig.outputs.rightUpperLeg.rotation);
-    meshes.lowerLegRight.position.copy(rig.outputs.rightLowerLeg.position);
-    meshes.lowerLegRight.quaternion.copy(rig.outputs.rightLowerLeg.rotation);
-    meshes.footRight.position.copy(rig.outputs.rightFoot.position);
-    meshes.footRight.quaternion.copy(rig.outputs.rightFoot.rotation);
+    for (const k in meshes) {
+      const mesh = meshes[k];
+      const output = rig.outputs[k];
+      if (!mesh || !output) {
+        console.warn('bad k', k);
+      }
+      mesh.matrix.copy(output.matrixWorld).decompose(mesh.position, mesh.quaternion, mesh.scale);
+    }
   }
 
   for (let i = 0; i < peerConnections.length; i++) {
