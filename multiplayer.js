@@ -221,7 +221,7 @@ class XRChannelConnection extends EventTarget {
       for (let i = 0; i < this.peerConnections.length; i++) {
         const peerConnection = this.peerConnections[i];
         for (let j = 0; j < oldTracks.length; j++) {
-          peerConnection.removeTrack(oldTracks[j]);
+          peerConnection.peerConnection.removeTrack(oldTracks[j]);
         }
       }
     }
@@ -233,7 +233,7 @@ class XRChannelConnection extends EventTarget {
       for (let i = 0; i < this.peerConnections.length; i++) {
         const peerConnection = this.peerConnections[i];
         for (let j = 0; j < tracks.length; j++) {
-          peerConnection.addTrack(tracks[j]);
+          peerConnection.peerConnection.addTrack(tracks[j]);
         }
       }
     }
