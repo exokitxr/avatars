@@ -937,7 +937,10 @@ function animate(timestamp, frame, referenceSpace) {
           // meshDolly.position.z -= zDist;
         } */
 
-        cameraDolly.position.add(localVector.set(padX, 0, padY).multiplyScalar(0.03));
+        const hmdEuler = localEuler.setFromQuaternion(rig.inputs.hmd.quaternion, 'YXZ');
+        localEuler.x = 0;
+        localEuler.z = 0;
+        cameraDolly.position.add(localVector.set(padX, 0, padY).applyEuler(hmdEuler).multiplyScalar(0.03));
         cameraDolly.updateMatrixWorld(true);
       };
 
