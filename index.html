@@ -715,6 +715,20 @@ const colors = {
   normal: 0x5c6bc0,
   highlight: 0x303f9f,
 };
+const _unloadSavedHead = () => {
+  rig.modelBones.Head.traverse(o => {
+    o.savedPosition.copy(o.position);
+    o.savedMatrixWorld.copy(o.matrixWorld);
+    o.position.set(NaN, NaN, NaN);
+    o.matrixWorld.set(NaN, NaN, NaN, NaN, NaN, NaN, NaN, NaN, NaN, NaN, NaN, NaN, NaN, NaN, NaN, NaN);
+  });
+};
+const _loadSavedHead = () => {
+  rig.modelBones.Head.traverse(o => {
+    o.position.copy(o.savedPosition);
+    o.matrixWorld.copy(o.savedMatrixWorld);
+  });
+};
 const mirrorMesh = (() => {
   const geometry = new THREE.PlaneBufferGeometry(1, 2)
     .applyMatrix(new THREE.Matrix4().makeTranslation(0, 1, 0));
@@ -724,7 +738,8 @@ const mirrorMesh = (() => {
     textureHeight: 2048 * window.devicePixelRatio,
     color: 0x889999,
     addColor: 0x300000,
-    recursion: 1
+    recursion: 1,
+    transparent: true,
   });
   mesh.position.set(0, 0, -1);
 
@@ -769,13 +784,14 @@ const mirrorMesh = (() => {
   };
 
   mesh.onBeforeRender2 = () => {
-    if (model && session) {
-      rig.modelBones.Head.quaternion.copy(rig.modelBones.Head.savedQuaternion);
+    if (model) {
+      _loadSavedHead();
       // meshDolly.visible = true;
     }
   };
   mesh.onAfterRender2 = () => {
-    if (model && session) {
+    if (model) {
+      _unloadSavedHead();
       // meshDolly.visible = false;
     }
   };
@@ -806,7 +822,10 @@ const _setLocalModel = object => {
     visemes: true,
     microphoneMediaStream,
   });
-  rig.modelBones.Head.savedQuaternion = new THREE.Quaternion();
+  rig.modelBones.Head.traverse(o => {
+    o.savedPosition = new THREE.Vector3();
+    o.savedMatrixWorld = new THREE.Matrix4();
+  });
   meshDolly.add(model);
   window.model = model;
 
@@ -906,7 +925,7 @@ function animate(timestamp, frame, referenceSpace) {
         }
       };
       const _updateTeleportMesh = (i, pad, lastPad, position, quaternion, padX, padY) => {
-        /* const teleportMesh = teleportMeshes[i];
+        const teleportMesh = teleportMeshes[i];
         teleportMesh.visible = false;
 
         if (pad) {
@@ -933,9 +952,9 @@ function animate(timestamp, frame, referenceSpace) {
           const zDest = teleportMesh.position.z;
           const zDist = zDest - meshDolly.position.z;
 
-          // meshDolly.position.x -= xDist;
-          // meshDolly.position.z -= zDist;
-        } */
+          cameraDolly.position.x -= xDist;
+          cameraDolly.position.z -= zDist;
+        }
 
         const hmdEuler = localEuler.setFromQuaternion(rig.inputs.hmd.quaternion, 'YXZ');
         localEuler.x = 0;
@@ -1041,12 +1060,15 @@ function animate(timestamp, frame, referenceSpace) {
     }
   }
 
-  if (rig && session) {
-    rig.modelBones.Head.savedQuaternion.copy(rig.modelBones.Head.quaternion);
-    rig.modelBones.Head.quaternion.set(NaN, NaN, NaN, NaN);
+  if (rig) {
+    _unloadSavedHead();
   }
 
   renderer.render(scene, camera);
+
+  if (rig) {
+    _loadSavedHead();
+  }
 }
 renderer.setAnimationLoop(animate);
 
