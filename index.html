@@ -282,10 +282,14 @@ import './HelioWebXRPolyfill.js';
 import Rig from './vrarmik/Rig.js';
 
 const peerPoseUpdateRate = 50;
+const floorPlane = new THREE.Plane().setFromNormalAndCoplanarPoint(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 0));
 
 const localVector = new THREE.Vector3();
 const localVector2 = new THREE.Vector3();
+const localVector3 = new THREE.Vector3();
 const localQuaternion = new THREE.Quaternion();
+const localEuler = new THREE.Euler();
+const localRay = new THREE.Ray();
 
 const scene = new THREE.Scene();
 
@@ -293,6 +297,9 @@ const camera = new THREE.PerspectiveCamera(90, window.innerWidth / window.innerH
 camera.position.y = 1.5;
 camera.position.z = 2;
 // camera.rotation.y = Math.PI;
+
+const cameraDolly = new THREE.Object3D();
+// cameraDolly.add(camera);
 
 const ambientLight = new THREE.AmbientLight(0x808080);
 scene.add(ambientLight);
@@ -411,6 +418,28 @@ scene.remove(meshes.shoulderRight);
 scene.remove(meshes.upperLegRight);
 scene.remove(meshes.lowerLegRight);
 scene.remove(meshes.footRight); */
+
+const teleportGeometry = new THREE.TorusBufferGeometry(0.5, 0.15, 3, 5)
+  .applyMatrix(new THREE.Matrix4().makeRotationX(-(Math.PI / 2)))
+  .applyMatrix(new THREE.Matrix4().makeRotationY((1 / 20) * (Math.PI * 2)));
+const teleportMaterial = new THREE.MeshBasicMaterial({
+  color: 0x44c2ff,
+});
+const _makeTeleportMesh = () => {
+  const geometry = teleportGeometry;
+  const material = teleportMaterial;
+
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.visible = false;
+  mesh.frustumCulled = false;
+  return mesh;
+};
+const teleportMeshes = [
+  _makeTeleportMesh(),
+  _makeTeleportMesh(),
+];
+scene.add(teleportMeshes[0]);
+scene.add(teleportMeshes[1]);
 
 const _getFileType = filename => {
   if (/\.(?:gltf|glb|vrm)$/.test(filename)) {
@@ -797,6 +826,7 @@ const _setLocalModel = object => {
 };
 
 const lastPresseds = [false, false];
+const lastPads = [false, false];
 const dateOffset = Math.floor(Math.random() * 60 * 1000);
 const realDateNow = (now => () => dateOffset + now())(Date.now);
 function animate(timestamp, frame, referenceSpace) {
@@ -818,12 +848,17 @@ function animate(timestamp, frame, referenceSpace) {
           const {transform} = pose;
           const {position, orientation, matrix} = transform;
           if (position) { // new WebXR api
-            const p = localVector.copy(position).multiplyScalar(heightFactor);
+            const p = localVector.copy(position)
+              .add(cameraDolly.position)
+              .multiplyScalar(heightFactor);
             const q = localQuaternion.copy(orientation);
             const pressed = gamepad.buttons[0].pressed;
             const lastPressed = lastPresseds[i];
             const pointer = gamepad.buttons[0].value;
             const grip = gamepad.buttons[1].value;
+            const pad = gamepad.axes[1] <= -0.5 || gamepad.axes[3] <= -0.5;
+            const padX = gamepad.axes[0] !== 0 ? gamepad.axes[0] : gamepad.axes[2];
+            const padY = gamepad.axes[1] !== 0 ? gamepad.axes[1] : gamepad.axes[3];
             return {
               position: p,
               quaternion: q,
@@ -831,6 +866,9 @@ function animate(timestamp, frame, referenceSpace) {
               lastPressed,
               pointer,
               grip,
+              pad,
+              padX,
+              padY,
             };
           } else if (matrix) { // old WebXR api
             const p = localVector;
@@ -839,11 +877,16 @@ function animate(timestamp, frame, referenceSpace) {
             localMatrix
               .fromArray(transform.matrix)
               .decompose(p, q, s);
-            p.multiplyScalar(heightFactor);
+            p
+              .add(cameraDolly.position)
+              .multiplyScalar(heightFactor);
             const pressed = gamepad.buttons[0].pressed;
             const lastPressed = lastPresseds[i];
             const pointer = gamepad.buttons[0].value;
             const grip = gamepad.buttons[1].value;
+            const pad = gamepad.axes[1] <= -0.5 || gamepad.axes[3] <= -0.5;
+            const padX = gamepad.axes[0] !== 0 ? gamepad.axes[0] : gamepad.axes[2];
+            const padY = gamepad.axes[1] !== 0 ? gamepad.axes[1] : gamepad.axes[3];
             return {
               position: p,
               quaternion: q,
@@ -851,6 +894,9 @@ function animate(timestamp, frame, referenceSpace) {
               lastPressed,
               pointer,
               grip,
+              pad,
+              padX,
+              padY,
             };
           } else {
             return null;
@@ -859,15 +905,51 @@ function animate(timestamp, frame, referenceSpace) {
           return null;
         }
       };
+      const _updateTeleportMesh = (i, pad, lastPad, position, quaternion, padX, padY) => {
+        /* const teleportMesh = teleportMeshes[i];
+        teleportMesh.visible = false;
+
+        if (pad) {
+          localVector.copy(position);
+          localEuler.setFromQuaternion(quaternion, 'YXZ');
+
+          for (let i = 0; i < 20; i++, localVector.add(localVector2), localEuler.x = Math.max(localEuler.x - Math.PI*0.07, -Math.PI/2)) {
+            localRay.set(localVector, localVector2.set(0, 0, -1).applyQuaternion(localQuaternion.setFromEuler(localEuler)));
+            const intersection = localRay.intersectPlane(floorPlane, localVector3);
+            // console.log('got intersection', intersection && intersection.toArray().join(','));
+            if (intersection && intersection.distance <= 1) {
+              teleportMesh.position.copy(intersection.point);
+              localEuler.setFromQuaternion(localQuaternion, 'YXZ');
+              localEuler.x = 0;
+              localEuler.z = 0;
+              teleportMesh.quaternion.setFromEuler(localEuler);
+              teleportMesh.visible = true;
+              break;
+            }
+          }
+        } else if (lastPad) {
+          const xDest = teleportMesh.position.x;
+          const xDist = xDest - meshDolly.position.x;
+          const zDest = teleportMesh.position.z;
+          const zDist = zDest - meshDolly.position.z;
+
+          // meshDolly.position.x -= xDist;
+          // meshDolly.position.z -= zDist;
+        } */
+
+        cameraDolly.position.add(localVector.set(padX, 0, padY).multiplyScalar(0.03));
+        cameraDolly.updateMatrixWorld(true);
+      };
 
       const lg = _getGamepad(1);
       let li = -1;
       if (lg) {
-        const {position, quaternion, pressed, lastPressed, pointer, grip} = lg;
+        const {position, quaternion, pressed, lastPressed, pointer, grip, pad, padX, padY} = lg;
         rig.inputs.leftGamepad.quaternion.copy(quaternion);
         rig.inputs.leftGamepad.position.copy(position);
         rig.inputs.leftGamepad.pointer = pointer;
         rig.inputs.leftGamepad.grip = grip;
+
         li = mirrorMesh.getButtonIntersectionIndex(position);
         if (pressed && !lastPressed) {
           if (li !== -1) {
@@ -875,16 +957,20 @@ function animate(timestamp, frame, referenceSpace) {
           }
         }
 
+        _updateTeleportMesh(0, pad, lastPads[1], position, quaternion, 0, 0);
+
         lastPresseds[0] = pressed;
+        lastPads[0] = pad;
       }
       const rg = _getGamepad(0);
       let ri = -1;
       if (rg) {
-        const {position, quaternion, pressed, lastPressed, pointer, grip} = rg;
+        const {position, quaternion, pressed, lastPressed, pointer, grip, pad, padX, padY} = rg;
         rig.inputs.rightGamepad.quaternion.copy(quaternion);
         rig.inputs.rightGamepad.position.copy(position);
         rig.inputs.rightGamepad.pointer = pointer;
         rig.inputs.rightGamepad.grip = grip;
+
         ri = mirrorMesh.getButtonIntersectionIndex(position);
         if (pressed && !lastPressed) {
           if (ri !== -1) {
@@ -892,7 +978,10 @@ function animate(timestamp, frame, referenceSpace) {
           }
         }
 
+        _updateTeleportMesh(1, false, false, position, quaternion, padX, padY);
+
         lastPresseds[1] = pressed;
+        lastPads[1] = pad;
       }
 
       for (let i = 0; i < mirrorMesh.buttonMeshes.length; i++) {
@@ -968,6 +1057,7 @@ enterXrButton.addEventListener('click', async () => {
   /* if (model) {
     meshDolly.visible = false;
   } */
+  cameraDolly.add(camera);
   let referenceSpace;
   let referenceSpaceType = '';
   const _loadReferenceSpace = async () => {
