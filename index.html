@@ -1098,11 +1098,15 @@ connectButton.addEventListener('click', () => {
               {
                 position: localVector.copy(rig.inputs.leftGamepad.position).divideScalar(heightFactor).toArray(),
                 quaternion: rig.inputs.leftGamepad.quaternion.toArray(),
+                pointer: rig.inputs.leftGamepad.pointer,
+                grip: rig.inputs.leftGamepad.grip,
                 visible: true,
               },
               {
                 position: localVector.copy(rig.inputs.rightGamepad.position).divideScalar(heightFactor).toArray(),
                 quaternion: rig.inputs.rightGamepad.quaternion.toArray(),
+                pointer: rig.inputs.rightGamepad.pointer,
+                grip: rig.inputs.rightGamepad.grip,
                 visible: true,
               },
             ];
@@ -1134,15 +1138,23 @@ connectButton.addEventListener('click', () => {
           rig.starts.hmd.rotation.copy(peerConnection.rig.inputs.hmd.quaternion);
           rig.starts.gamepads[0].position.copy(peerConnection.rig.inputs.leftGamepad.position);
           rig.starts.gamepads[0].rotation.copy(peerConnection.rig.inputs.leftGamepad.quaternion);
+          rig.starts.gamepads[0].pointer = peerConnection.rig.inputs.leftGamepad.pointer;
+          rig.starts.gamepads[0].grip = peerConnection.rig.inputs.leftGamepad.grip;
           rig.starts.gamepads[1].position.copy(peerConnection.rig.inputs.rightGamepad.position);
           rig.starts.gamepads[1].rotation.copy(peerConnection.rig.inputs.rightGamepad.quaternion);
+          rig.starts.gamepads[1].pointer = peerConnection.rig.inputs.rightGamepad.pointer;
+          rig.starts.gamepads[1].grip = peerConnection.rig.inputs.rightGamepad.grip;
 
           rig.targets.hmd.position.fromArray(hmd.position);
           rig.targets.hmd.rotation.fromArray(hmd.quaternion);
           rig.targets.gamepads[0].position.fromArray(gamepads[0].position);
           rig.targets.gamepads[0].rotation.fromArray(gamepads[0].quaternion);
+          rig.targets.gamepads[0].pointer = gamepads[0].pointer;
+          rig.targets.gamepads[0].grip = gamepads[0].grip;
           rig.targets.gamepads[1].position.fromArray(gamepads[1].position);
           rig.targets.gamepads[1].rotation.fromArray(gamepads[1].quaternion);
+          rig.targets.gamepads[1].pointer = gamepads[1].pointer;
+          rig.targets.gamepads[1].grip = gamepads[1].grip;
           rig.targets.timestamp = Date.now();
         }
       });
@@ -1182,10 +1194,14 @@ connectButton.addEventListener('click', () => {
               {
                 position: peerConnection.rig.inputs.leftGamepad.position.clone(),
                 rotation:  peerConnection.rig.inputs.leftGamepad.quaternion.clone(),
+                pointer: peerConnection.rig.inputs.leftGamepad.pointer,
+                grip: peerConnection.rig.inputs.leftGamepad.grip,
               },
               {
                 position: peerConnection.rig.inputs.rightGamepad.position.clone(),
                 rotation: peerConnection.rig.inputs.rightGamepad.quaternion.clone(),
+                pointer: peerConnection.rig.inputs.rightGamepad.pointer,
+                grip: peerConnection.rig.inputs.rightGamepad.grip,
               },
             ],
           };
@@ -1198,10 +1214,14 @@ connectButton.addEventListener('click', () => {
               {
                 position: new THREE.Vector3(),
                 rotation: new THREE.Quaternion(),
+                pointer: 0,
+                grip: 0,
               },
               {
                 position: new THREE.Vector3(),
                 rotation: new THREE.Quaternion(),
+                pointer: 0,
+                grip: 0,
               },
             ],
             timestamp: Date.now(),
@@ -1218,17 +1238,21 @@ connectButton.addEventListener('click', () => {
               lerpFactor
             );
 
-            peerConnection.rig.inputs.leftGamepad.quaternion.copy(peerConnection.rig.starts.gamepads[0].rotation).slerp(peerConnection.rig.targets.gamepads[0].rotation, lerpFactor);
             peerConnection.rig.inputs.leftGamepad.position.copy(peerConnection.rig.starts.gamepads[0].position).lerp(
               localVector.copy(peerConnection.rig.targets.gamepads[0].position).multiplyScalar(heightFactor),
               lerpFactor
             );
+            peerConnection.rig.inputs.leftGamepad.quaternion.copy(peerConnection.rig.starts.gamepads[0].rotation).slerp(peerConnection.rig.targets.gamepads[0].rotation, lerpFactor);
+            peerConnection.rig.inputs.leftGamepad.pointer = peerConnection.rig.starts.gamepads[0].pointer * (1-lerpFactor) + peerConnection.rig.targets.gamepads[0].pointer * lerpFactor;
+            peerConnection.rig.inputs.leftGamepad.grip = peerConnection.rig.starts.gamepads[0].grip * (1-lerpFactor) + peerConnection.rig.targets.gamepads[0].grip * lerpFactor;
 
-            peerConnection.rig.inputs.rightGamepad.quaternion.copy(peerConnection.rig.starts.gamepads[1].rotation).slerp(peerConnection.rig.targets.gamepads[1].rotation, lerpFactor);
             peerConnection.rig.inputs.rightGamepad.position.copy(peerConnection.rig.starts.gamepads[1].position).lerp(
               localVector.copy(peerConnection.rig.targets.gamepads[1].position).multiplyScalar(heightFactor),
               lerpFactor
             );
+            peerConnection.rig.inputs.rightGamepad.quaternion.copy(peerConnection.rig.starts.gamepads[1].rotation).slerp(peerConnection.rig.targets.gamepads[1].rotation, lerpFactor);
+            peerConnection.rig.inputs.rightGamepad.pointer = peerConnection.rig.starts.gamepads[1].pointer * (1-lerpFactor) + peerConnection.rig.targets.gamepads[1].pointer * lerpFactor;
+            peerConnection.rig.inputs.rightGamepad.grip = peerConnection.rig.starts.gamepads[1].grip * (1-lerpFactor) + peerConnection.rig.targets.gamepads[1].grip * lerpFactor;
 
             _update.apply(this, arguments);
           })(peerConnection.rig.update);
