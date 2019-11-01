@@ -369,20 +369,20 @@ class Rig {
     const flipY = armatureDirection.z < -0.5;
     const legDirection = new Vector3(0, 0, -1).applyQuaternion(Left_leg.getWorldQuaternion(new Quaternion()).premultiply(armature.quaternion.clone().inverse()));
     const flipLeg = legDirection.y < 0.5;
-    const scaleFactor = Head.getWorldPosition(new Vector3())
-      .distanceTo(Left_ankle.getWorldPosition(new Vector3())) / Math.abs(armature.scale.y) > 100 ? 100 : 1;
-	  console.log('flip', flipZ, flipY, scaleFactor);
+	  console.log('flip', flipZ, flipY, flipLeg);
 	  this.flipZ = flipZ;
 	  this.flipY = flipY;
     this.flipLeg = flipLeg;
-    this.scaleFactor = scaleFactor;
 
     const armatureQuaternion = armature.quaternion.clone();
     const armatureMatrixInverse = new THREE.Matrix4().getInverse(armature.matrixWorld);
     const armatureScale = armature.scale.clone();
     armature.position.set(0, 0, 0);
     armature.quaternion.set(0, 0, 0, 1);
-    armature.scale.set(1, 1, 1).divideScalar(this.scaleFactor);
+    this.armatureScaleFactor = Head.getWorldPosition(new Vector3())
+      .distanceTo(Left_ankle.getWorldPosition(new Vector3()))
+      / Math.abs(armature.scale.y) > 100 ? 100 : 1;
+    armature.scale.set(1, 1, 1).divideScalar(this.armatureScaleFactor);
     armature.updateMatrix();
 
     const hairBones = tailBones.filter(bone => /hair/i.test(bone.name)).map(bone => {
@@ -723,7 +723,7 @@ class Rig {
       const modelBoneOutput = this.modelBoneOutputs[k];
 
       if (k === 'Hips') {
-        modelBone.position.copy(modelBoneOutput.position).multiplyScalar(this.scaleFactor);
+        modelBone.position.copy(modelBoneOutput.position).multiplyScalar(this.armatureScaleFactor);
       }
       modelBone.quaternion.multiplyQuaternions(modelBoneOutput.quaternion, modelBone.initialQuaternion)
 
