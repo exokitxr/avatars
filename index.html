@@ -741,12 +741,13 @@ const mirrorMesh = (() => {
 
   mesh.onBeforeRender2 = () => {
     if (model && session) {
-      meshDolly.visible = true;
+      rig.modelBones.Head.quaternion.copy(rig.modelBones.Head.savedQuaternion);
+      // meshDolly.visible = true;
     }
   };
   mesh.onAfterRender2 = () => {
     if (model && session) {
-      meshDolly.visible = false;
+      // meshDolly.visible = false;
     }
   };
 
@@ -776,6 +777,7 @@ const _setLocalModel = object => {
     visemes: true,
     microphoneMediaStream,
   });
+  rig.modelBones.Head.savedQuaternion = new THREE.Quaternion();
   meshDolly.add(model);
   window.model = model;
 
@@ -947,6 +949,11 @@ function animate(timestamp, frame, referenceSpace) {
     }
   }
 
+  if (rig && session) {
+    rig.modelBones.Head.savedQuaternion.copy(rig.modelBones.Head.quaternion);
+    rig.modelBones.Head.quaternion.set(NaN, NaN, NaN, NaN);
+  }
+
   renderer.render(scene, camera);
 }
 renderer.setAnimationLoop(animate);
@@ -958,9 +965,9 @@ enterXrButton.addEventListener('click', async () => {
   session = await navigator.xr.requestSession('immersive-vr', {
     requiredFeatures: ['local-floor'],
   });
-  if (model) {
+  /* if (model) {
     meshDolly.visible = false;
-  }
+  } */
   let referenceSpace;
   let referenceSpaceType = '';
   const _loadReferenceSpace = async () => {
