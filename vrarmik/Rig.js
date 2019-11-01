@@ -748,15 +748,17 @@ class Rig {
         for (const k in fingerBones) {
           const fingerBone = fingerBones[k];
           if (fingerBone) {
+            let setter;
             if (k === 'thumb') {
-              localQuaternion.setFromAxisAngle(localVector.set(0, left ? 1 : -1, 0), gamepadInput.grip * Math.PI*0.25);
+              setter = (q, i) => q.setFromAxisAngle(localVector.set(0, left ? 1 : -1, 0), gamepadInput.grip * Math.PI*(i === 0 ? 0.125 : 0.25));
             } else if (k === 'index') {
-              localQuaternion.setFromAxisAngle(localVector.set(0, 0, left ? -1 : 1), gamepadInput.pointer * Math.PI*0.5);
+              setter = (q, i) => q.setFromAxisAngle(localVector.set(0, 0, left ? -1 : 1), gamepadInput.pointer * Math.PI*0.5);
             } else {
-              localQuaternion.setFromAxisAngle(localVector.set(0, 0, left ? -1 : 1), gamepadInput.grip * Math.PI*0.5);
+              setter = (q, i) => q.setFromAxisAngle(localVector.set(0, 0, left ? -1 : 1), gamepadInput.grip * Math.PI*0.5);
             }
+            let index = 0;
             fingerBone.traverse(subFingerBone => {
-              subFingerBone.quaternion.copy(localQuaternion);
+              setter(subFingerBone.quaternion, index++);
             });
           }
         }
