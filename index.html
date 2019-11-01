@@ -280,13 +280,12 @@ import './webxr-polyfill.module.js';
 import './HelioWebXRPolyfill.js';
 // import 'https://web.exokit.org/ew.js';
 import Rig from './vrarmik/Rig.js';
-import {Vector3, Quaternion} from './vrarmik/Unity.js';
 
-const peerPoseUpdateRate = 20;
+const peerPoseUpdateRate = 50;
 
-const localVector = new Vector3();
-const localVector2 = new Vector3();
-const localQuaternion = new Quaternion();
+const localVector = new THREE.Vector3();
+const localVector2 = new THREE.Vector3();
+const localQuaternion = new THREE.Quaternion();
 
 const scene = new THREE.Scene();
 
@@ -756,7 +755,7 @@ const mirrorMesh = (() => {
 scene.add(mirrorMesh);
 
 const userHeight = 1.7;
-const z180Quaternion = new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), Math.PI);
+const _getHeightFactor = rigHeight => rigHeight / userHeight;
 
 let rig = null;
 let model = null;
@@ -781,7 +780,7 @@ const _setLocalModel = object => {
   window.model = model;
 
   // heightOffset = userHeight - rig.height;
-  heightFactor = rig.height / userHeight;
+  heightFactor = _getHeightFactor(rig.height);
   // console.log('height factor', heightFactor);
 
   // scene.position.y = heightOffset;
@@ -905,21 +904,21 @@ function animate(timestamp, frame, referenceSpace) {
       // rig.inputs.hmd.position.set(positionOffset, 0.6 + standFactor, 0);
       rig.inputs.hmd.position.set(positionOffset, standFactor, 0);
       rig.inputs.hmd.quaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), rotationAngle)
-        .multiply(new Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.sin((realDateNow()%2000)/2000*Math.PI*2)*Math.PI*0.2))
-        .multiply(new Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.sin((realDateNow()%2000)/2000*Math.PI*2)*Math.PI*0.25));
+        .multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.sin((realDateNow()%2000)/2000*Math.PI*2)*Math.PI*0.2))
+        .multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.sin((realDateNow()%2000)/2000*Math.PI*2)*Math.PI*0.25));
 
       rig.inputs.rightGamepad.quaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), rotationAngle)
-        // .multiply(new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), Math.sin((realDateNow()%5000)/5000*Math.PI*2)*Math.PI*0.6));
+        // .multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.sin((realDateNow()%5000)/5000*Math.PI*2)*Math.PI*0.6));
       rig.inputs.rightGamepad.position.set(positionOffset, rig.height*0.7 + Math.sin((realDateNow()%2000)/2000*Math.PI*2)*0.1, 0).add(
-        new Vector3(-rig.shoulderWidth/2, 0, -0.2).applyQuaternion(rig.inputs.rightGamepad.quaternion)
+        new THREE.Vector3(-rig.shoulderWidth/2, 0, -0.2).applyQuaternion(rig.inputs.rightGamepad.quaternion)
       )/*.add(
-        new Vector3(-0.1, 0, -1).normalize().multiplyScalar(rig.rightArmLength*0.4).applyQuaternion(rig.inputs.rightGamepad.quaternion)
+        new THREE.Vector3(-0.1, 0, -1).normalize().multiplyScalar(rig.rightArmLength*0.4).applyQuaternion(rig.inputs.rightGamepad.quaternion)
       ); */
       rig.inputs.leftGamepad.quaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), rotationAngle);
       rig.inputs.leftGamepad.position.set(positionOffset, rig.height*0.7, 0).add(
-        new Vector3(rig.shoulderWidth/2, 0, -0.2).applyQuaternion(rig.inputs.leftGamepad.quaternion)
+        new THREE.Vector3(rig.shoulderWidth/2, 0, -0.2).applyQuaternion(rig.inputs.leftGamepad.quaternion)
       )/*.add(
-        new Vector3(0.1, 0, -1).normalize().multiplyScalar(rig.leftArmLength*0.4).applyQuaternion(rig.inputs.leftGamepad.quaternion)
+        new THREE.Vector3(0.1, 0, -1).normalize().multiplyScalar(rig.leftArmLength*0.4).applyQuaternion(rig.inputs.leftGamepad.quaternion)
       );*/
 
       rig.inputs.leftGamepad.pointer = (Math.sin((Date.now()%10000)/10000*Math.PI*2) + 1) / 2;
@@ -934,9 +933,9 @@ function animate(timestamp, frame, referenceSpace) {
     for (const k in meshes) {
       const mesh = meshes[k];
       const output = rig.outputs[k];
-      if (!mesh || !output) {
+      /* if (!mesh || !output) {
         console.warn('bad k', k);
-      }
+      } */
       mesh.matrix.copy(output.matrixWorld).decompose(mesh.position, mesh.quaternion, mesh.scale);
     }
   }
@@ -1092,18 +1091,18 @@ connectButton.addEventListener('click', () => {
         updateInterval = setInterval(() => {
           if (rig) {
             const hmd = {
-              position: rig.inputs.hmd.position.toArray(),
-              quaternion: rig.inputs.hmd.rotation.toArray(),
+              position: localVector.copy(rig.inputs.hmd.position).divideScalar(heightFactor).toArray(),
+              quaternion: rig.inputs.hmd.quaternion.toArray(),
             };
             const gamepads = [
               {
-                position: rig.inputs.leftGamepad.position.toArray(),
-                quaternion: rig.inputs.leftGamepad.rotation.toArray(),
+                position: localVector.copy(rig.inputs.leftGamepad.position).divideScalar(heightFactor).toArray(),
+                quaternion: rig.inputs.leftGamepad.quaternion.toArray(),
                 visible: true,
               },
               {
-                position: rig.inputs.rightGamepad.position.toArray(),
-                quaternion: rig.inputs.rightGamepad.rotation.toArray(),
+                position: localVector.copy(rig.inputs.rightGamepad.position).divideScalar(heightFactor).toArray(),
+                quaternion: rig.inputs.rightGamepad.quaternion.toArray(),
                 visible: true,
               },
             ];
@@ -1131,15 +1130,19 @@ connectButton.addEventListener('click', () => {
           const {detail: data} = e;
           const {hmd, gamepads} = data;
 
+          rig.starts.hmd.position.copy(peerConnection.rig.inputs.hmd.position);
+          rig.starts.hmd.rotation.copy(peerConnection.rig.inputs.hmd.quaternion);
+          rig.starts.gamepads[0].position.copy(peerConnection.rig.inputs.leftGamepad.position);
+          rig.starts.gamepads[0].rotation.copy(peerConnection.rig.inputs.leftGamepad.quaternion);
+          rig.starts.gamepads[1].position.copy(peerConnection.rig.inputs.rightGamepad.position);
+          rig.starts.gamepads[1].rotation.copy(peerConnection.rig.inputs.rightGamepad.quaternion);
+
           rig.targets.hmd.position.fromArray(hmd.position);
           rig.targets.hmd.rotation.fromArray(hmd.quaternion);
-
           rig.targets.gamepads[0].position.fromArray(gamepads[0].position);
           rig.targets.gamepads[0].rotation.fromArray(gamepads[0].quaternion);
-
           rig.targets.gamepads[1].position.fromArray(gamepads[1].position);
           rig.targets.gamepads[1].rotation.fromArray(gamepads[1].quaternion);
-
           rig.targets.timestamp = Date.now();
         }
       });
@@ -1161,8 +1164,6 @@ connectButton.addEventListener('click', () => {
           console.log('got peer model', {url});
 
           peerConnection.model = await _loadModelUrl(url);
-          scene.add(peerConnection.model);
-
           peerConnection.rig = new Rig(peerConnection.model, {
             fingers: true,
             hair: true,
@@ -1170,37 +1171,64 @@ connectButton.addEventListener('click', () => {
             microphoneMediaStream: peerConnection.mediaStream,
             muted: false,
           });
+          scene.add(peerConnection.model);
 
-          peerConnection.rig.targets = {
+          peerConnection.rig.starts = {
             hmd: {
-              position: new Vector3(),
-              rotation: new Quaternion(),
+              position: peerConnection.rig.inputs.hmd.position.clone(),
+              rotation: peerConnection.rig.inputs.hmd.quaternion.clone(),
             },
             gamepads: [
               {
-                position: new Vector3(),
-                rotation: new Quaternion(),
+                position: peerConnection.rig.inputs.leftGamepad.position.clone(),
+                rotation:  peerConnection.rig.inputs.leftGamepad.quaternion.clone(),
               },
               {
-                position: new Vector3(),
-                rotation: new Quaternion(),
+                position: peerConnection.rig.inputs.rightGamepad.position.clone(),
+                rotation: peerConnection.rig.inputs.rightGamepad.quaternion.clone(),
+              },
+            ],
+          };
+          peerConnection.rig.targets = {
+            hmd: {
+              position: new THREE.Vector3(),
+              rotation: new THREE.Quaternion(),
+            },
+            gamepads: [
+              {
+                position: new THREE.Vector3(),
+                rotation: new THREE.Quaternion(),
+              },
+              {
+                position: new THREE.Vector3(),
+                rotation: new THREE.Quaternion(),
               },
             ],
             timestamp: Date.now(),
           };
+          const heightFactor = _getHeightFactor(peerConnection.rig.height);
           peerConnection.rig.update = (_update => function update() {
             const now = Date.now();
             const {timestamp} = peerConnection.rig.targets;
-            const lerpFactor = Math.min(Math.max((now - timestamp) / peerPoseUpdateRate, 0), 1);
+            const lerpFactor = Math.min(Math.max((now - timestamp) / (peerPoseUpdateRate*2), 0), 1);  
 
-            peerConnection.rig.inputs.hmd.rotation = peerConnection.rig.inputs.hmd.rotation.slerp(peerConnection.rig.targets.hmd.rotation, lerpFactor);
-            peerConnection.rig.inputs.hmd.position = peerConnection.rig.inputs.hmd.position.lerp(peerConnection.rig.targets.hmd.position, lerpFactor);
+            peerConnection.rig.inputs.hmd.quaternion.copy(peerConnection.rig.starts.hmd.rotation).slerp(peerConnection.rig.targets.hmd.rotation, lerpFactor);
+            peerConnection.rig.inputs.hmd.position.copy(peerConnection.rig.starts.hmd.position).lerp(
+              localVector.copy(peerConnection.rig.targets.hmd.position).multiplyScalar(heightFactor),
+              lerpFactor
+            );
 
-            peerConnection.rig.inputs.leftGamepad.rotation = peerConnection.rig.inputs.leftGamepad.rotation.slerp(peerConnection.rig.targets.gamepads[0].rotation, lerpFactor);
-            peerConnection.rig.inputs.leftGamepad.position = peerConnection.rig.inputs.leftGamepad.position.lerp(peerConnection.rig.targets.gamepads[0].position, lerpFactor);
+            peerConnection.rig.inputs.leftGamepad.quaternion.copy(peerConnection.rig.starts.gamepads[0].rotation).slerp(peerConnection.rig.targets.gamepads[0].rotation, lerpFactor);
+            peerConnection.rig.inputs.leftGamepad.position.copy(peerConnection.rig.starts.gamepads[0].position).lerp(
+              localVector.copy(peerConnection.rig.targets.gamepads[0].position).multiplyScalar(heightFactor),
+              lerpFactor
+            );
 
-            peerConnection.rig.inputs.rightGamepad.rotation = peerConnection.rig.inputs.rightGamepad.rotation.slerp(peerConnection.rig.targets.gamepads[1].rotation, lerpFactor);
-            peerConnection.rig.inputs.rightGamepad.position = peerConnection.rig.inputs.rightGamepad.position.lerp(peerConnection.rig.targets.gamepads[1].position, lerpFactor);
+            peerConnection.rig.inputs.rightGamepad.quaternion.copy(peerConnection.rig.starts.gamepads[1].rotation).slerp(peerConnection.rig.targets.gamepads[1].rotation, lerpFactor);
+            peerConnection.rig.inputs.rightGamepad.position.copy(peerConnection.rig.starts.gamepads[1].position).lerp(
+              localVector.copy(peerConnection.rig.targets.gamepads[1].position).multiplyScalar(heightFactor),
+              lerpFactor
+            );
 
             _update.apply(this, arguments);
           })(peerConnection.rig.update);
@@ -1223,7 +1251,7 @@ connectButton.addEventListener('click', () => {
       await navigator.xr.supportsSession('immersive-vr');
       result = true;
     } catch (err) {
-      console.warn(err.stack);
+      console.warn(err);
       result = false;
     }
   } else {
