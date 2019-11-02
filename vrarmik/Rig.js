@@ -1,21 +1,21 @@
-import {Vector3, Quaternion} from './Unity.js';
 import {fixSkeletonZForward} from '../proto/three-ik/modified.AxisUtils.js';
 import PoseManager from './PoseManager.js';
 import ShoulderTransforms from './ShoulderTransforms.js';
 import LegsManager from './LegsManager.js';
 
-const zeroVector = new Vector3();
-const oneVector = new Vector3(1, 1, 1);
-const upRotation = new Quaternion().setFromAxisAngle(new Vector3(1, 0, 0), Math.PI/2);
-const leftRotation = new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), Math.PI/2);
-const rightRotation = new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), -Math.PI/2);
+const zeroVector = new THREE.Vector3();
+const upRotation = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.PI/2);
+const leftRotation = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI/2);
+const rightRotation = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), -Math.PI/2);
 
-const localVector = new Vector3();
-const localVector2 = new Vector3();
-const localVector3 = new Vector3();
-const localVector4 = new Vector3();
-const localQuaternion = new Quaternion();
-const localQuaternion2 = new Quaternion();
+const localVector = new THREE.Vector3();
+const localVector2 = new THREE.Vector3();
+const localVector3 = new THREE.Vector3();
+const localVector4 = new THREE.Vector3();
+const localVector5 = new THREE.Vector3();
+const localVector6 = new THREE.Vector3();
+const localQuaternion = new THREE.Quaternion();
+const localQuaternion2 = new THREE.Quaternion();
 const localMatrix = new THREE.Matrix4();
 
 const _localizeMatrixWorld = bone => {
@@ -351,23 +351,23 @@ class Rig {
 
     const _getEyePosition = () => {
       if (Eye_L && Eye_R) {
-        return Eye_L.getWorldPosition(new Vector3())
-          .add(Eye_R.getWorldPosition(new Vector3()))
+        return Eye_L.getWorldPosition(new THREE.Vector3())
+          .add(Eye_R.getWorldPosition(new THREE.Vector3()))
           .divideScalar(2);
       } else {
-        const neckToHeadDiff = Head.getWorldPosition(new Vector3()).sub(Neck.getWorldPosition(new Vector3()));
+        const neckToHeadDiff = Head.getWorldPosition(new THREE.Vector3()).sub(Neck.getWorldPosition(new THREE.Vector3()));
         if (neckToHeadDiff.z < 0) {
           neckToHeadDiff.z *= -1;
         }
-        return Head.getWorldPosition(new Vector3()).add(neckToHeadDiff);
+        return Head.getWorldPosition(new THREE.Vector3()).add(neckToHeadDiff);
       }
     };
     // const eyeDirection = _getEyePosition().sub(Head.getWorldPosition(new Vector3()));
-    const leftArmDirection = Left_wrist.getWorldPosition(new Vector3()).sub(Head.getWorldPosition(new Vector3()));
+    const leftArmDirection = Left_wrist.getWorldPosition(new THREE.Vector3()).sub(Head.getWorldPosition(new THREE.Vector3()));
 	  const flipZ = leftArmDirection.x < 0;//eyeDirection.z < 0;
     const armatureDirection = new THREE.Vector3(0, 1, 0).applyQuaternion(armature.quaternion);
     const flipY = armatureDirection.z < -0.5;
-    const legDirection = new Vector3(0, 0, -1).applyQuaternion(Left_leg.getWorldQuaternion(new Quaternion()).premultiply(armature.quaternion.clone().inverse()));
+    const legDirection = new THREE.Vector3(0, 0, -1).applyQuaternion(Left_leg.getWorldQuaternion(new THREE.Quaternion()).premultiply(armature.quaternion.clone().inverse()));
     const flipLeg = legDirection.y < 0.5;
 	  console.log('flip', flipZ, flipY, flipLeg);
 	  this.flipZ = flipZ;
@@ -379,8 +379,8 @@ class Rig {
     const armatureScale = armature.scale.clone();
     armature.position.set(0, 0, 0);
     armature.quaternion.set(0, 0, 0, 1);
-    this.armatureScaleFactor = Head.getWorldPosition(new Vector3())
-      .distanceTo(Left_ankle.getWorldPosition(new Vector3()))
+    this.armatureScaleFactor = Head.getWorldPosition(new THREE.Vector3())
+      .distanceTo(Left_ankle.getWorldPosition(new THREE.Vector3()))
       / Math.abs(armature.scale.y) > 100 ? 100 : 1;
     armature.scale.set(1, 1, 1).divideScalar(this.armatureScaleFactor);
     armature.updateMatrix();
@@ -397,9 +397,9 @@ class Rig {
       hairBones.forEach(rootHairBone => {
         rootHairBone.traverse(hairBone => {
           hairBone.length = hairBone.position.length();
-          hairBone.worldParentOffset = hairBone.getWorldPosition(new Vector3()).sub(hairBone.parent.getWorldPosition(new Vector3())).divide(armatureScale);
-          hairBone.initialWorldQuaternion = hairBone.getWorldQuaternion(new Quaternion());
-          hairBone.velocity = new Vector3();
+          hairBone.worldParentOffset = hairBone.getWorldPosition(new THREE.Vector3()).sub(hairBone.parent.getWorldPosition(new THREE.Vector3())).divide(armatureScale);
+          hairBone.initialWorldQuaternion = hairBone.getWorldQuaternion(new THREE.Quaternion());
+          hairBone.velocity = new THREE.Vector3();
           if (hairBone !== rootHairBone) {
             hairBone._updateMatrixWorld = hairBone.updateMatrixWorld;
             hairBone.updateMatrixWorld = () => {};
@@ -448,75 +448,70 @@ class Rig {
     const _ensurePrerotation = k => {
       const boneName = modelBones[k].name;
       if (!preRotations[boneName]) {
-        preRotations[boneName] = new Quaternion();
+        preRotations[boneName] = new THREE.Quaternion();
       }
       return preRotations[boneName];
     };
     if (flipY) {
       ['Hips'].forEach(k => {
-        _ensurePrerotation(k).premultiply(new Quaternion().setFromAxisAngle(new Vector3(1, 0, 0), -Math.PI/2));
+        _ensurePrerotation(k).premultiply(new THREE.Quaternion().setFromAxisAngle(new Vector3(1, 0, 0), -Math.PI/2));
       });
     }
-    if (!flipZ) {
-    	// preRotations.Left_arm.premultiply(new Quaternion().setFromAxisAngle(new Vector3(0, 0, 1), Math.PI*0.25));
-    	// preRotations.Right_arm.premultiply(new Quaternion().setFromAxisAngle(new Vector3(0, 0, 1),  -Math.PI*0.25));
-      // preRotations.Upper_armL.premultiply(new Quaternion().setFromAxisAngle(new Vector3(0, 0, 1), Math.PI*0.25));
-      // preRotations.Upper_armR.premultiply(new Quaternion().setFromAxisAngle(new Vector3(0, 0, 1),  -Math.PI*0.25));
-    } else {
+    if (flipZ) {
       ['Hips'].forEach(k => {
-        _ensurePrerotation(k).premultiply(new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), Math.PI));
+        _ensurePrerotation(k).premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI));
       });
     }
     if (flipLeg) {
       ['Left_leg', 'Right_leg'].forEach(k => {
-        _ensurePrerotation(k).premultiply(new Quaternion().setFromAxisAngle(new Vector3(1, 0, 0), Math.PI/2));
+        _ensurePrerotation(k).premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.PI/2));
       });
     }
 
     const qrArm = flipZ ? Left_arm : Right_arm;
     const qrElbow = flipZ ? Left_elbow : Right_elbow;
     const qrWrist = flipZ ? Left_wrist : Right_wrist;
-    const qr = new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), -Math.PI/2)
+    const qr = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), -Math.PI/2)
       .premultiply(
-        new Quaternion().setFromRotationMatrix(new THREE.Matrix4().lookAt(
-          new Vector3(0, 0, 0),
-          qrElbow.getWorldPosition(new Vector3()).applyMatrix4(armatureMatrixInverse)
-            .sub(qrArm.getWorldPosition(new Vector3()).applyMatrix4(armatureMatrixInverse))
+        new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().lookAt(
+          new THREE.Vector3(0, 0, 0),
+          qrElbow.getWorldPosition(new THREE.Vector3()).applyMatrix4(armatureMatrixInverse)
+            .sub(qrArm.getWorldPosition(new THREE.Vector3()).applyMatrix4(armatureMatrixInverse))
             .applyQuaternion(armatureQuaternion),
-          new Vector3(0, 1, 0),
+          new THREE.Vector3(0, 1, 0),
         ))
       );
-    const qr2 = new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), -Math.PI/2)
+    const qr2 = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), -Math.PI/2)
       .premultiply(
-        new Quaternion().setFromRotationMatrix(new THREE.Matrix4().lookAt(
-          new Vector3(0, 0, 0),
-          qrWrist.getWorldPosition(new Vector3()).applyMatrix4(armatureMatrixInverse)
-            .sub(qrElbow.getWorldPosition(new Vector3()).applyMatrix4(armatureMatrixInverse))
+        new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().lookAt(
+          new THREE.Vector3(0, 0, 0),
+          qrWrist.getWorldPosition(new THREE.Vector3()).applyMatrix4(armatureMatrixInverse)
+            .sub(qrElbow.getWorldPosition(new THREE.Vector3()).applyMatrix4(armatureMatrixInverse))
             .applyQuaternion(armatureQuaternion),
-          new Vector3(0, 1, 0),
+          new THREE.Vector3(0, 1, 0),
         ))
       );
     const qlArm = flipZ ? Right_arm : Left_arm;
     const qlElbow = flipZ ? Right_elbow : Left_elbow;
     const qlWrist = flipZ ? Right_wrist : Left_wrist;
-    const ql = new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), Math.PI/2)
+    const ql = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI/2)
       .premultiply(
-        new Quaternion().setFromRotationMatrix(new THREE.Matrix4().lookAt(
-          new Vector3(0, 0, 0),
-          qlElbow.getWorldPosition(new Vector3()).applyMatrix4(armatureMatrixInverse)
-            .sub(qlArm.getWorldPosition(new Vector3()).applyMatrix4(armatureMatrixInverse))
+        new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().lookAt(
+          new THREE.Vector3(0, 0, 0),
+          qlElbow.getWorldPosition(new THREE.Vector3()).applyMatrix4(armatureMatrixInverse)
+            .sub(qlArm.getWorldPosition(new THREE.Vector3()).applyMatrix4(armatureMatrixInverse))
             .applyQuaternion(armatureQuaternion),
-          new Vector3(0, 1, 0),
+          new THREE.Vector3(0, 1, 0),
         ))
       );
-    const ql2 = new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), Math.PI/2)
+    const ql2 = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI/2)
       .premultiply(
-        new Quaternion().setFromRotationMatrix(new THREE.Matrix4().lookAt(
-          new Vector3(0, 0, 0),
-          qlWrist.getWorldPosition(new Vector3()).applyMatrix4(armatureMatrixInverse)
-            .sub(qlElbow.getWorldPosition(new Vector3()).applyMatrix4(armatureMatrixInverse))
+        new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().lookAt(
+          new THREE.Vector3(0, 0, 0),
+          qlWrist.getWorldPosition(new THREE.Vector3()).applyMatrix4(armatureMatrixInverse)
+            .sub(qlElbow.getWorldPosition(new THREE.Vector3()).applyMatrix4(armatureMatrixInverse))
             .applyQuaternion(armatureQuaternion),
-          new Vector3(0, 1, 0),
+          new THREE.Vector3(0, 1, 0),
         ))
       );
 
@@ -531,8 +526,8 @@ class Rig {
       .multiply(ql.clone())
       .premultiply(ql2.clone().inverse());
 
-    _ensurePrerotation('Left_leg').premultiply(new Quaternion().setFromAxisAngle(new Vector3(1, 0, 0),  -Math.PI/2));
-    _ensurePrerotation('Right_leg').premultiply(new Quaternion().setFromAxisAngle(new Vector3(1, 0, 0),  -Math.PI/2));
+    _ensurePrerotation('Left_leg').premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0),  -Math.PI/2));
+    _ensurePrerotation('Right_leg').premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0),  -Math.PI/2));
 
     for (const k in preRotations) {
       preRotations[k].inverse();
@@ -579,9 +574,9 @@ class Rig {
       }
     }
 
-	  const _getOffset = (bone, parent = bone.parent) => bone.getWorldPosition(new Vector3()).sub(parent.getWorldPosition(new Vector3()));
+	  const _getOffset = (bone, parent = bone.parent) => bone.getWorldPosition(new THREE.Vector3()).sub(parent.getWorldPosition(new THREE.Vector3()));
 	  const _averagePoint = points => {
-      const result = new Vector3();
+      const result = new THREE.Vector3();
       for (let i = 0; i < points.length; i++) {
         result.add(points[i]);
       }
@@ -594,7 +589,7 @@ class Rig {
 	    chest: _getOffset(modelBones.Chest, modelBones.Spine),
 	    neck: _getOffset(modelBones.Neck),
 	    head: _getOffset(modelBones.Head),
-	    eyes: eyePosition.clone().sub(Head.getWorldPosition(new Vector3())),
+	    eyes: eyePosition.clone().sub(Head.getWorldPosition(new THREE.Vector3())),
 
 	    leftShoulder: _getOffset(modelBones.Right_shoulder),
 	    leftUpperArm: _getOffset(modelBones.Right_arm),
@@ -645,8 +640,8 @@ class Rig {
 
     this.shoulderTransforms.hips.updateMatrixWorld();
 
-    this.height = eyePosition.sub(_averagePoint([modelBones.Left_ankle.getWorldPosition(new Vector3()), modelBones.Right_ankle.getWorldPosition(new Vector3())])).y;
-    this.shoulderWidth = modelBones.Left_arm.getWorldPosition(new Vector3()).distanceTo(modelBones.Right_arm.getWorldPosition(new Vector3()));
+    this.height = eyePosition.sub(_averagePoint([modelBones.Left_ankle.getWorldPosition(new THREE.Vector3()), modelBones.Right_ankle.getWorldPosition(new THREE.Vector3())])).y;
+    this.shoulderWidth = modelBones.Left_arm.getWorldPosition(new THREE.Vector3()).distanceTo(modelBones.Right_arm.getWorldPosition(new THREE.Vector3()));
     this.leftArmLength = this.shoulderTransforms.leftArm.armLength;
     this.rightArmLength = this.shoulderTransforms.rightArm.armLength;
 
@@ -769,18 +764,21 @@ class Rig {
 
     if (this.options.hair) {
       const hipsRotation = this.modelBones.Hips.quaternion;
+      const scale = localVector.setFromMatrixScale(this.modelBones.Head.matrixWorld);;
       const _processHairBone = (hairBone, children) => {
-        const p = localVector.setFromMatrixPosition(hairBone.matrixWorld);
+        const p = localVector2.setFromMatrixPosition(hairBone.matrixWorld);
 
         for (let i = 0; i < children.length; i++) {
           const childHairBone = children[i];
 
-          const px = localVector2.setFromMatrixPosition(childHairBone.matrixWorld);
+          const px = localVector3.setFromMatrixPosition(childHairBone.matrixWorld);
           const hairDistance = px.distanceTo(p);
-          const hairDirection = localVector3.copy(px).sub(p).normalize();
+          const hairDirection = localVector4.copy(px).sub(p).normalize();
 
-          if (hairDistance > childHairBone.length * 2) {
-            px.copy(p).add(localVector4.copy(hairDirection).multiplyScalar(childHairBone.length * 2));
+          const hairLength = childHairBone.length * scale.y;
+
+          if (hairDistance > hairLength * 2) {
+            px.copy(p).add(localVector5.copy(hairDirection).multiplyScalar(hairLength * 2));
           }
 
           const l = childHairBone.velocity.length();
@@ -788,21 +786,21 @@ class Rig {
             childHairBone.velocity.multiplyScalar(0.05/l);
           }
 
-          childHairBone.velocity.add(localVector4.copy(hairDirection).multiplyScalar(-(hairDistance - childHairBone.length) * 0.1 * timeDiff/32));
-          childHairBone.velocity.add(localVector4.set(0, -9.8, 0).multiplyScalar(0.0002 * timeDiff/32));
-          childHairBone.velocity.add(localVector4.copy(childHairBone.worldParentOffset).applyQuaternion(hipsRotation).multiplyScalar(0.03 * timeDiff/32));
+          childHairBone.velocity.add(localVector5.copy(hairDirection).multiplyScalar(-(hairDistance - hairLength) * 0.1 * timeDiff/32));
+          childHairBone.velocity.add(localVector5.set(0, -9.8, 0).multiply(scale).multiplyScalar(0.0002 * timeDiff/32));
+          childHairBone.velocity.add(localVector5.copy(childHairBone.worldParentOffset).multiply(scale).applyQuaternion(hipsRotation).multiplyScalar(0.03 * timeDiff/32));
           childHairBone.velocity.lerp(zeroVector, 0.2 * timeDiff/32);
 
-          const p2 = px.clone().add(childHairBone.velocity);
+          const p2 = localVector5.copy(px).add(childHairBone.velocity);
           const q2 = localQuaternion.multiplyQuaternions(
             localQuaternion2.setFromRotationMatrix(localMatrix.lookAt(
               zeroVector,
               hairDirection,
-              localVector4.set(0, 0, -1).applyQuaternion(hipsRotation),
+              localVector6.set(0, 0, -1).applyQuaternion(hipsRotation),
             )),
             childHairBone.initialWorldQuaternion
           );
-          childHairBone.matrixWorld.compose(p2, q2, oneVector);
+          childHairBone.matrixWorld.compose(p2, q2, scale);
         }
         for (let i = 0; i < children.length; i++) {
           const childHairBone = children[i];

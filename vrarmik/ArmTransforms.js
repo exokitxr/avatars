@@ -1,5 +1,3 @@
-import {Vector3, Quaternion, Transform, Mathf} from './Unity.js';
-
 class ArmTransforms
 	{
 		constructor() {

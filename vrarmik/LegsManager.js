@@ -1,21 +1,21 @@
-import {Vector2, Vector3, Quaternion, Transform, Helpers} from './Unity.js';
+import {Helpers} from './Unity.js';
 
-const zeroVector = new Vector3();
-const oneVector = new Vector3(1, 1, 1);
-const identityRotation = new Quaternion();
-const downHalfRotation = new Quaternion().setFromAxisAngle(new Vector3(1, 0, 0), -Math.PI/2);
-const upHalfRotation = new Quaternion().setFromAxisAngle(new Vector3(1, 0, 0), Math.PI/2);
-const downQuarterRotation = new Quaternion().setFromAxisAngle(new Vector3(1, 0, 0), -Math.PI/4);
+const zeroVector = new THREE.Vector3();
+const oneVector = new THREE.Vector3(1, 1, 1);
+const identityRotation = new THREE.Quaternion();
+const downHalfRotation = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -Math.PI/2);
+const upHalfRotation = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.PI/2);
+const downQuarterRotation = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -Math.PI/4);
 
-const localVector = new Vector3();
-const localVector2 = new Vector3();
-const localVector3 = new Vector3();
-const localVector4 = new Vector3();
-const localVector5 = new Vector3();
-const localVector6 = new Vector3();
-const localQuaternion = new Quaternion();
-const localQuaternion2 = new Quaternion();
-const localQuaternion3 = new Quaternion();
+const localVector = new THREE.Vector3();
+const localVector2 = new THREE.Vector3();
+const localVector3 = new THREE.Vector3();
+const localVector4 = new THREE.Vector3();
+const localVector5 = new THREE.Vector3();
+const localVector6 = new THREE.Vector3();
+const localQuaternion = new THREE.Quaternion();
+const localQuaternion2 = new THREE.Quaternion();
+const localQuaternion3 = new THREE.Quaternion();
 const localEuler = new THREE.Euler();
 const localMatrix = new THREE.Matrix4();
 const localMatrix2 = new THREE.Matrix4();

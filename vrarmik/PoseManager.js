@@ -1,5 +1,4 @@
 import VRTrackingReferences from './VRTrackingReferences.js';
-import {Transform} from './Unity.js';
 
 class PoseManager
 	{
