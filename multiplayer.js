@@ -28,18 +28,30 @@ class XRChannelConnection extends EventTarget {
     };
     const _addPeerConnection = peerConnectionId => {
       let peerConnection = this.peerConnections.find(peerConnection => peerConnection.connectionId === peerConnectionId);
-      if (peerConnection && !peerConnection.open) {
+      /* if (peerConnection && !peerConnection.open) {
         peerConnection.close();
         peerConnection = null;
-      }
+      } */
       if (!peerConnection) {
         peerConnection = new XRPeerConnection(peerConnectionId);
-        peerConnection.addEventListener('close', () => {
-          const index = this.peerConnections.indexOf(peerConnection);
-          if (index !== -1) {
-            this.peerConnections.splice(index, 1);
+        peerConnection.token = this.connectionId < peerConnectionId ? -1 : 0;
+        peerConnection.needsNegotiation = false;
+        peerConnection.negotiating = false;
+        peerConnection.peerConnection.onnegotiationneeded = e => {
+          console.log('negotiation needed', peerConnection.token, peerConnection.negotiating);
+          if (peerConnection.token !== 0 && !peerConnection.negotiating) {
+            if (peerConnection.token !== -1) {
+              clearTimeout(peerConnection.token);
+              peerConnection.token = -1;
+            }
+            peerConnection.needsNegotiation = false;
+            peerConnection.negotiating = true;
+
+            _startOffer(peerConnection);
+          } else {
+            peerConnection.needsNegotiation = true;
           }
-        });
+        };
         peerConnection.peerConnection.onicecandidate = e => {
           // console.log('ice candidate', e.candidate);
 
@@ -49,6 +61,12 @@ class XRChannelConnection extends EventTarget {
             method: 'iceCandidate',
             candidate: e.candidate,
           }));
+        };
+        peerConnection.onclose = () => {
+          const index = this.peerConnections.indexOf(peerConnection);
+          if (index !== -1) {
+            this.peerConnections.splice(index, 1);
+          }
         };
 
         this.peerConnections.push(peerConnection);
@@ -64,10 +82,6 @@ class XRChannelConnection extends EventTarget {
             peerConnection.peerConnection.addTrack(tracks[i]);
           }
         }
-
-        if (this.connectionId < peerConnectionId) {
-          _startOffer(peerConnection);
-        }
       }
     };
     const _removePeerConnection = peerConnectionId => {
@@ -80,7 +94,10 @@ class XRChannelConnection extends EventTarget {
     };
     const _startOffer = peerConnection => {
       peerConnection.peerConnection
-        .createOffer()
+        .createOffer({
+          offerToReceiveAudio: true,
+          offerToReceiveVideo: true,
+        })
         .then(offer => {
           // console.log('create offer');
           return peerConnection.peerConnection.setLocalDescription(offer).then(() => offer);
@@ -131,12 +148,7 @@ class XRChannelConnection extends EventTarget {
                 }
               };
               _recurse();
-            }))
-            .then(() => {
-              if (this.connectionId >= peerConnectionId && this.microphoneMediaStream) {
-                _startOffer(peerConnection);
-              }
-            });
+            }));
         } else {
           console.warn('no such peer connection', peerConnectionId, this.peerConnections.map(peerConnection => peerConnection.connectionId));
         }
@@ -145,7 +157,17 @@ class XRChannelConnection extends EventTarget {
 
         const peerConnection = this.peerConnections.find(peerConnection => peerConnection.connectionId === peerConnectionId);
         if (peerConnection) {
-          peerConnection.peerConnection.setRemoteDescription(answer);
+          peerConnection.peerConnection.setRemoteDescription(answer)
+            .then(() => {
+              peerConnection.negotiating = false;
+              peerConnection.token = 0;
+
+              this.rtcWs.send(JSON.stringify({
+                dst: peerConnectionId,
+                src: this.connectionId,
+                method: 'token',
+              }));
+            });
         } else {
           console.warn('no such peer connection', peerConnectionId, this.peerConnections.map(peerConnection => peerConnection.connectionId));
         }
@@ -161,6 +183,31 @@ class XRChannelConnection extends EventTarget {
         } else {
           console.warn('no such peer connection', peerConnectionId, this.peerConnections.map(peerConnection => peerConnection.connectionId));
         }
+      } else if (method === 'token') {
+        const {src: peerConnectionId} = data;
+
+        const peerConnection = this.peerConnections.find(peerConnection => peerConnection.connectionId === peerConnectionId);
+        if (peerConnection) {
+          if (peerConnection.needsNegotiation) {
+            peerConnection.token = -1;
+            peerConnection.needsNegotiation = false;
+            peerConnection.negotiating = true;
+
+            _startOffer(peerConnection);
+          } else {
+            peerConnection.token = setTimeout(() => {
+              peerConnection.token = 0;
+
+              this.rtcWs.send(JSON.stringify({
+                dst: peerConnectionId,
+                src: this.connectionId,
+                method: 'token',
+              }));
+            }, 500);
+          }
+        } else {
+          console.warn('no such peer connection', peerConnectionId, this.peerConnections.map(peerConnection => peerConnection.connectionId));
+        }
       } else if (method === 'leave') {
         const {connectionId: peerConnectionId} = data;
         _removePeerConnection(peerConnectionId);
@@ -172,7 +219,7 @@ class XRChannelConnection extends EventTarget {
     };
     this.rtcWs.onclose = () => {
       clearInterval(pingInterval);
-      console.log('rtc closed');
+      console.log('rtc ws got close');
 
       this.dispatchEvent(new CustomEvent('close'));
     };
@@ -252,9 +299,6 @@ class XRPeerConnection extends EventTarget {
     });
     this.open = false;
 
-    /* this.peerConnection.onnegotiationneeded = e => {
-      console.log('negotiation needed');
-    }; */
     /* this.peerConnection.onaddstream = e => {
       this.dispatchEvent(new CustomEvent('mediastream', {
         detail: e.stream,
@@ -277,21 +321,21 @@ class XRPeerConnection extends EventTarget {
       this.open = true;
       this.dispatchEvent(new CustomEvent('open'));
 
-      pingInterval = setInterval(() => {
+      /* pingInterval = setInterval(() => {
         sendChannel.send(JSON.stringify({
           method: 'ping',
         }));
-      }, 1000);
+      }, 1000); */
     };
     sendChannel.onclose = () => {
-      // console.log('data channel local close');
+      console.log('send channel got close');
 
       _cleanup();
     };
     sendChannel.onerror = err => {
       // console.log('data channel local error', err);
     };
-    let watchdogTimeout = 0;
+    /* let watchdogTimeout = 0;
     const _kick = () => {
       if (watchdogTimeout) {
         clearTimeout(watchdogTimeout);
@@ -301,7 +345,7 @@ class XRPeerConnection extends EventTarget {
         this.peerConnection.close();
       }, 5000);
     };
-    _kick();
+    _kick(); */
     this.peerConnection.ondatachannel = e => {
       const {channel} = e;
       // console.log('data channel remote open', channel);
@@ -321,15 +365,15 @@ class XRPeerConnection extends EventTarget {
           this.dispatchEvent(new CustomEvent('pose', {
             detail: data,
           }))
-        } else if (method === 'ping') {
-          // nothing
+        /* } else if (method === 'ping') {
+          // nothing */
         } else {
           this.dispatchEvent(new MessageEvent('message', {
             data: e.data,
           }));
         }
 
-        _kick();
+        // _kick();
       };
       this.peerConnection.recvChannel = channel;
     };
