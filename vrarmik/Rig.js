@@ -454,7 +454,7 @@ class Rig {
     };
     if (flipY) {
       ['Hips'].forEach(k => {
-        _ensurePrerotation(k).premultiply(new THREE.Quaternion().setFromAxisAngle(new Vector3(1, 0, 0), -Math.PI/2));
+        _ensurePrerotation(k).premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -Math.PI/2));
       });
     }
     if (flipZ) {
