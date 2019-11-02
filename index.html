@@ -1295,6 +1295,10 @@ connectButton.addEventListener('click', () => {
           const {url} = data;
           console.log('got peer model', {url});
 
+          if (peerConnection.model) {
+            scene.remove(peerConnection.model);
+          }
+
           peerConnection.model = await _loadModelUrl(url);
           peerConnection.rig = new Rig(peerConnection.model, {
             fingers: true,
