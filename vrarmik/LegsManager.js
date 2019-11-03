@@ -1,13 +1,16 @@
 import {Helpers} from './Unity.js';
 
-const stepTime = 50;
-const stepHeight = 0.1;
-const stepMinDistance = 0.7;
-const stepMaxDistance = 2.5;
-const stepRestitutionDistance = 1;
-const minStepDistanceTimeFactor = 0.1;
-const minHmdVelocityTimeFactor = 0.01;
-const velocityRestitutionFactor = 15;
+const stepRate = 0.2;
+const stepHeight = 0.2;
+const stepMinDistance = 0;
+const stepMaxDistance = 0.25;
+const stepRestitutionDistance = 0.8;
+// const minStepDistanceTimeFactor = 0.2;
+const minHmdVelocityTimeFactor = 0.02;
+// const velocityLearningFactor = 1;
+const maxVelocity = 0.02;
+const velocityRestitutionFactor = 25;
+const crossStepFactor = 0.9;
 
 const zeroVector = new THREE.Vector3();
 const oneVector = new THREE.Vector3(1, 1, 1);
@@ -47,7 +50,7 @@ class Leg {
     this.foot.startTransform = new THREE.Object3D();
     this.foot.endTransform = new THREE.Object3D();
     this.foot.startHmdFloorTransform = new THREE.Object3D();
-    this.foot.startTimestamp = Date.now();
+    this.foot.lastTimestamp = Date.now();
 
     this.transform.add(this.upperLeg);
     this.upperLeg.add(this.lowerLeg);
@@ -169,9 +172,9 @@ class LegsManager {
 		Helpers.updateMatrixWorld(this.rightLeg.lowerLeg);
 		Helpers.updateMatrixWorld(this.rightLeg.foot);
 
-    const velocityLearningFactor = 0.1;
-		this.hmdVelocity.multiplyScalar(1-velocityLearningFactor)
-		  .add(localVector.copy(this.poseManager.vrTransforms.head.position).sub(this.lastHmdPosition).multiplyScalar(velocityLearningFactor));
+		/* this.hmdVelocity.multiplyScalar(1-velocityLearningFactor)
+		  .add(localVector.copy(this.poseManager.vrTransforms.head.position).sub(this.lastHmdPosition).multiplyScalar(velocityLearningFactor)); */
+		this.hmdVelocity.copy(this.poseManager.vrTransforms.head.position).sub(this.lastHmdPosition);
 		this.lastHmdPosition.copy(this.poseManager.vrTransforms.head.position);
 		// console.log('v', this.hmdVelocity.toArray().join(','));
 
@@ -209,15 +212,16 @@ class LegsManager {
 
     // rotation
 
+    const maxTiltAngleFactor = 0.1;
     if (this.leftLeg.standing) {
       const leftFootEuler = localEuler.setFromQuaternion(leftFootRotation, 'YXZ');
       leftFootEuler.x = 0;
 	    leftFootEuler.z = 0;
-    	if (leftFootEuler.y < -Math.PI*0.15) {
-    		leftFootEuler.y = -Math.PI*0.15;
+    	if (leftFootEuler.y < -Math.PI*maxTiltAngleFactor) {
+    		leftFootEuler.y = -Math.PI*maxTiltAngleFactor;
     	}
-    	if (leftFootEuler.y > Math.PI*0.15) {
-    		leftFootEuler.y = Math.PI*0.15;
+    	if (leftFootEuler.y > Math.PI*maxTiltAngleFactor) {
+    		leftFootEuler.y = Math.PI*maxTiltAngleFactor;
     	}
     	localMatrix3.compose(zeroVector, localQuaternion3.setFromEuler(leftFootEuler), oneVector)
 	      .premultiply(planeMatrix)
@@ -230,11 +234,11 @@ class LegsManager {
 	    const rightFootEuler = localEuler.setFromQuaternion(rightFootRotation, 'YXZ');
 	    rightFootEuler.x = 0;
 	    rightFootEuler.z = 0;
-    	if (rightFootEuler.y < -Math.PI*0.15) {
-    		rightFootEuler.y = -Math.PI*0.15;
+    	if (rightFootEuler.y < -Math.PI*maxTiltAngleFactor) {
+    		rightFootEuler.y = -Math.PI*maxTiltAngleFactor;
     	}
-    	if (rightFootEuler.y > Math.PI*0.15) {
-    		rightFootEuler.y = Math.PI*0.15;
+    	if (rightFootEuler.y > Math.PI*maxTiltAngleFactor) {
+    		rightFootEuler.y = Math.PI*maxTiltAngleFactor;
     	}
     	localMatrix3.compose(zeroVector, localQuaternion3.setFromEuler(rightFootEuler), oneVector)
 	      .premultiply(planeMatrix)
@@ -246,96 +250,110 @@ class LegsManager {
 
 	  // position
 
-    if (!this.leftLeg.stepping && !this.rightLeg.stepping && this.leftLeg.standing && this.rightLeg.standing) {
+    const _getLegStepFactor = leg => {
+    	if (leg.stepping) {
+	      const now = Date.now();
+	      const timeDiff = now - leg.foot.lastTimestamp;
+	      leg.foot.lastTimestamp = now;
+
+				const scaledStepRate = stepRate
+				  /* / Math.max(
+				  	localVector.set(this.poseManager.vrTransforms.head.position.x, 0, this.poseManager.vrTransforms.head.position.z)
+				  	  .distanceTo(leg.foot.startHmdFloorTransform.position),
+				  	minStepDistanceTimeFactor
+				  ) */
+				  * Math.max(localVector2.set(this.hmdVelocity.x, 0, this.hmdVelocity.z).length(), minHmdVelocityTimeFactor);
+				return Math.min(Math.max(leg.stepFactor + scaledStepRate * timeDiff, 0), 1);
+	    } else {
+	    	return 0;
+	    }
+    };
+    this.leftLeg.stepFactor = _getLegStepFactor(this.leftLeg);
+    this.rightLeg.stepFactor = _getLegStepFactor(this.rightLeg);
+
+    const leftCanStep = this.leftLeg.standing && !this.leftLeg.stepping && (!this.rightLeg.stepping || this.rightLeg.stepFactor >= crossStepFactor);
+    const rightCanStep = this.rightLeg.standing && !this.rightLeg.stepping && (!this.leftLeg.stepping || this.leftLeg.stepFactor >= crossStepFactor);
+    const maxStepAngleFactor = 0;
+    if (leftCanStep || rightCanStep) {
     	let leftStepDistance = 0;
     	let leftStepAngleDiff = 0;
-	    if (this.leftLeg.standing) {
+	    if (leftCanStep) {
 	    	const leftDistance = Math.sqrt(leftFootPosition.x*leftFootPosition.x + leftFootPosition.z*leftFootPosition.z);
-				const leftAngleDiff = _angleDiff(Math.PI/2, Math.atan2(leftFootPosition.z, leftFootPosition.x));
-				if (leftDistance < this.legSeparation*stepMinDistance) {
-					leftStepDistance = this.legSeparation*stepMinDistance - leftDistance;
-				} else if (leftDistance > this.legSeparation*stepMaxDistance) {
-					leftStepDistance = this.legSeparation*stepMaxDistance - leftDistance;
+				const leftAngleDiff = Math.atan2(leftFootPosition.x, leftFootPosition.z);
+				if (leftDistance < this.rig.height*stepMinDistance) {
+					leftStepDistance = leftDistance;
+				} else if (leftDistance > this.rig.height*stepMaxDistance) {
+					leftStepDistance = leftDistance;
 				}
-				if (leftAngleDiff > -Math.PI*0.3) {
-					leftStepAngleDiff = _angleDiff(leftAngleDiff, -Math.PI*0.3);
-				} else if (leftAngleDiff < -Math.PI/2-Math.PI*0.3) {
-					leftStepAngleDiff = _angleDiff(leftAngleDiff, -Math.PI/2-Math.PI*0.3);
+				if (leftAngleDiff > -Math.PI*maxStepAngleFactor) {
+					leftStepAngleDiff = leftAngleDiff;
+				} else if (leftAngleDiff < -Math.PI+Math.PI*maxStepAngleFactor) {
+					leftStepAngleDiff = leftAngleDiff;
 				}
 			}
 			let rightStepDistance = 0;
     	let rightStepAngleDiff = 0;
-			if (this.rightLeg.standing) {
+			if (rightCanStep) {
 				const rightDistance = Math.sqrt(rightFootPosition.x*rightFootPosition.x + rightFootPosition.z*rightFootPosition.z);
-				const rightAngleDiff = _angleDiff(Math.PI/2, Math.atan2(rightFootPosition.z, rightFootPosition.x));
-		    if (rightDistance < this.legSeparation*stepMinDistance) {
-		    	rightStepDistance = this.legSeparation*stepMinDistance - rightDistance;
-		    } else if (rightDistance > this.legSeparation*3) {
-		    	rightStepDistance = this.legSeparation*stepMaxDistance - rightDistance;
+				const rightAngleDiff = Math.atan2(rightFootPosition.x, rightFootPosition.z);
+		    if (rightDistance < this.rig.height*stepMinDistance) {
+		    	rightStepDistance = rightDistance;
+		    } else if (rightDistance > this.rig.height*stepMaxDistance) {
+		    	rightStepDistance = rightDistance;
 		    }
-		    if (rightAngleDiff < Math.PI*0.3) {
-		    	rightStepAngleDiff = _angleDiff(rightAngleDiff, Math.PI*0.3);
-		    } else if (rightAngleDiff > Math.PI/2+Math.PI*0.3) {
-					rightStepAngleDiff = _angleDiff(rightAngleDiff, Math.PI/2+Math.PI*0.3);
+		    if (rightAngleDiff < Math.PI*maxStepAngleFactor) {
+		    	rightStepAngleDiff = rightAngleDiff;
+		    } else if (rightAngleDiff > Math.PI-Math.PI*maxStepAngleFactor) {
+					rightStepAngleDiff = rightAngleDiff;
 				}
 			}
-			if (leftStepDistance !== 0 || rightStepDistance !== 0 || leftStepAngleDiff !== 0 || rightStepAngleDiff !== 0) {
-				const _stepLeg = leg => {
-          const footDistance = this.legSeparation*stepRestitutionDistance;//Math.min(Math.max(leftStepDistance, this.legSeparation*0.7), this.legSeparation*1.4);
 
-					leg.foot.startTransform.position.copy(leg.foot.stickTransform.position);
-	        // leg.foot.startTransform.quaternion.copy(leg.foot.stickTransform.quaternion);
+      const _stepLeg = leg => {
+        const footDistance = this.legSeparation*stepRestitutionDistance;//Math.min(Math.max(leftStepDistance, this.legSeparation*0.7), this.legSeparation*1.4);
 
-				   leg.foot.endTransform.position.copy(hipsFloorPosition)
-					  .add(localVector6.set((leg.left ? -1 : 1) * footDistance, 0, 0).applyQuaternion(leg.foot.stickTransform.quaternion))
-					  .add(localVector6.set(this.hmdVelocity.x, 0, this.hmdVelocity.z).multiplyScalar(velocityRestitutionFactor));
-				  // leg.foot.endTransform.quaternion.copy(this.rightLeg.foot.stickTransform.quaternion);
+				leg.foot.startTransform.position.copy(leg.foot.stickTransform.position);
+        // leg.foot.startTransform.quaternion.copy(leg.foot.stickTransform.quaternion);
 
-				  leg.foot.startHmdFloorTransform.position.set(this.poseManager.vrTransforms.head.position.x, 0, this.poseManager.vrTransforms.head.position.z);
+			   leg.foot.endTransform.position.copy(hipsFloorPosition)
+				  .add(localVector6.set((leg.left ? -1 : 1) * footDistance, 0, 0).applyQuaternion(leg.foot.stickTransform.quaternion));
+				const velocityVector = localVector6.set(this.hmdVelocity.x, 0, this.hmdVelocity.z);
+				const velocityVectorLength = velocityVector.length();
+				if (velocityVectorLength > maxVelocity) {
+          velocityVector.multiplyScalar(maxVelocity / velocityVectorLength);
+				}
+				velocityVector.multiplyScalar(velocityRestitutionFactor);
+				leg.foot.endTransform.position.add(velocityVector);
+			  // leg.foot.endTransform.quaternion.copy(this.rightLeg.foot.stickTransform.quaternion);
 
-          leg.foot.stepHeight = stepHeight * this.rig.height;
-          leg.foot.startTimestamp = Date.now();
-	        leg.stepping = true;
-				};
-        if (
-        	Math.abs(leftStepDistance*this.leftLeg.balance) > Math.abs(rightStepDistance*this.rightLeg.balance) ||
-        	(
-        		Math.abs(leftStepDistance*this.leftLeg.balance) === Math.abs(rightStepDistance*this.rightLeg.balance) &&
-        		Math.abs(leftStepAngleDiff*this.leftLeg.balance) > Math.abs(rightStepAngleDiff*this.rightLeg.balance)
-        	)
-        ) {
-        	_stepLeg(this.leftLeg);
-          this.leftLeg.balance = 0;
-          this.rightLeg.balance = 0;
-        } else {
-        	_stepLeg(this.rightLeg);
-        	this.rightLeg.balance = 0;
-          this.leftLeg.balance = 1;
-        }
-			} else {
-				this.leftLeg.balance = 1;//Math.min(this.leftLeg.balance + 0.1, 1);
-				this.rightLeg.balance = 1;//Math.min(this.rightLeg.balance + 0.1, 1);
+			  leg.foot.startHmdFloorTransform.position.set(this.poseManager.vrTransforms.head.position.x, 0, this.poseManager.vrTransforms.head.position.z);
+
+        leg.foot.stepHeight = stepHeight * this.rig.height;
+        leg.foot.lastTimestamp = Date.now();
+        leg.stepping = true;
+			};
+
+			if (
+				(leftStepDistance !== 0 || leftStepAngleDiff !== 0) &&
+				(rightStepDistance === 0 || Math.abs(leftStepDistance*this.leftLeg.balance) >= Math.abs(rightStepDistance*this.rightLeg.balance)) &&
+				(rightStepAngleDiff === 0 || Math.abs(leftStepAngleDiff*this.leftLeg.balance) >= Math.abs(rightStepAngleDiff*this.rightLeg.balance))
+			) {
+				_stepLeg(this.leftLeg);
+        this.leftLeg.balance = 0;
+        this.rightLeg.balance = 1;
+			} else if (rightStepDistance !== 0  || rightStepAngleDiff !== 0) {
+				_stepLeg(this.rightLeg);
+      	this.rightLeg.balance = 0;
+        this.leftLeg.balance = 1;
 			}
 		}
 
     if (this.leftLeg.stepping) {
-			const now = Date.now();
-			const scaledStepTime = stepTime
-			  / Math.max(
-			  	localVector.set(this.poseManager.vrTransforms.head.position.x, 0, this.poseManager.vrTransforms.head.position.z)
-			  	  .distanceTo(this.leftLeg.foot.startHmdFloorTransform.position),
-			  	minStepDistanceTimeFactor
-			  )
-			  // / Math.max(localVector2.set(this.hmdVelocity.x, 0, this.hmdVelocity.z).length(), minHmdVelocityTimeFactor);
-      const stepFactor = Math.min(Math.max((now - this.leftLeg.foot.startTimestamp) / scaledStepTime, 0), 1);
-      const xzStepFactor = Math.min(stepFactor * 2, 1);
-
       this.leftLeg.foot.stickTransform.position.copy(this.leftLeg.foot.startTransform.position)
-        .lerp(this.leftLeg.foot.endTransform.position, xzStepFactor)
-        .add(localVector2.set(0, Math.sin(stepFactor*Math.PI) * this.leftLeg.foot.stepHeight, 0));
+        .lerp(this.leftLeg.foot.endTransform.position, this.leftLeg.stepFactor)
+        .add(localVector2.set(0, Math.sin(this.leftLeg.stepFactor*Math.PI) * this.leftLeg.foot.stepHeight, 0));
       // this.leftLeg.foot.stickTransform.quaternion.copy(this.leftLeg.foot.startTransform.quaternion).slerp(this.leftLeg.foot.endTransform.quaternion, stepFactor);
 
-      if (stepFactor >= 1) {
+      if (this.leftLeg.stepFactor >= 1) {
       	this.leftLeg.stepping = false;
       }
 		} else if (!this.leftLeg.standing) {
@@ -343,23 +361,12 @@ class LegsManager {
 		  this.leftLeg.foot.stickTransform.position.y = 0;
 		}
 		if (this.rightLeg.stepping) {
-			const now = Date.now();
-			const scaledStepTime = stepTime
-			  / Math.max(
-			  	localVector.set(this.poseManager.vrTransforms.head.position.x, 0, this.poseManager.vrTransforms.head.position.z)
-			  	  .distanceTo(this.rightLeg.foot.startHmdFloorTransform.position),
-			  	minStepDistanceTimeFactor
-			  )
-			  // / Math.max(localVector.set(this.hmdVelocity.x, 0, this.hmdVelocity.z).length(), minHmdVelocityTimeFactor);
-      const stepFactor = Math.min(Math.max((now - this.rightLeg.foot.startTimestamp) / scaledStepTime, 0), 1);
-      const xzStepFactor = Math.min(stepFactor * 2, 1);
-
       this.rightLeg.foot.stickTransform.position.copy(this.rightLeg.foot.startTransform.position)
-        .lerp(this.rightLeg.foot.endTransform.position, xzStepFactor)
-        .add(localVector.set(0, Math.sin(stepFactor*Math.PI) * this.rightLeg.foot.stepHeight, 0));
+        .lerp(this.rightLeg.foot.endTransform.position, this.rightLeg.stepFactor)
+        .add(localVector.set(0, Math.sin(this.rightLeg.stepFactor*Math.PI) * this.rightLeg.foot.stepHeight, 0));
       // this.rightLeg.foot.stickTransform.quaternion.copy(this.rightLeg.foot.startTransform.quaternion).slerp(this.rightLeg.foot.endTransform.quaternion, stepFactor);
 
-      if (stepFactor >= 1) {
+      if (this.rightLeg.stepFactor >= 1) {
       	this.rightLeg.stepping = false;
       }
 		} else if (!this.rightLeg.standing) {
