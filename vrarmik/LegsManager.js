@@ -1,11 +1,13 @@
 import {Helpers} from './Unity.js';
 
-const stepTime = 4;
+const stepTime = 50;
 const stepHeight = 0.1;
 const stepMinDistance = 0.7;
-const stepMaxDistance = 3;
+const stepMaxDistance = 2.5;
 const stepRestitutionDistance = 1;
-const velocityRestitution = 15;
+const minStepDistanceTimeFactor = 0.1;
+const minHmdVelocityTimeFactor = 0.01;
+const velocityRestitutionFactor = 15;
 
 const zeroVector = new THREE.Vector3();
 const oneVector = new THREE.Vector3(1, 1, 1);
@@ -42,9 +44,10 @@ class Leg {
     this.lowerLeg = new THREE.Object3D();
     this.foot = new THREE.Object3D();
     this.foot.stickTransform = new THREE.Object3D();
-    this.foot.startTimestamp = Date.now();
     this.foot.startTransform = new THREE.Object3D();
     this.foot.endTransform = new THREE.Object3D();
+    this.foot.startHmdFloorTransform = new THREE.Object3D();
+    this.foot.startTimestamp = Date.now();
 
     this.transform.add(this.upperLeg);
     this.upperLeg.add(this.lowerLeg);
@@ -127,7 +130,7 @@ class Leg {
 	}
 
 	isStanding() {
-		return this.stepping || Helpers.getWorldPosition(this.upperLeg, localVector).y <= this.legLength;
+		return Helpers.getWorldPosition(this.upperLeg, localVector).y <= this.legLength;
 	}
 }
 
@@ -173,7 +176,13 @@ class LegsManager {
 		// console.log('v', this.hmdVelocity.toArray().join(','));
 
 	  this.leftLeg.standing = this.leftLeg.isStanding();
+	  if (this.leftLeg.stepping && !this.leftLeg.standing) {
+      this.leftLeg.stepping = false;
+	  }
 	  this.rightLeg.standing = this.rightLeg.isStanding();
+	  if (this.rightLeg.stepping && !this.rightLeg.standing) {
+      this.rightLeg.stepping = false;
+	  }
 
     const hipsFloorPosition = localVector.copy(this.hips.position);
     hipsFloorPosition.y = 0;
@@ -275,17 +284,17 @@ class LegsManager {
           const footDistance = this.legSeparation*stepRestitutionDistance;//Math.min(Math.max(leftStepDistance, this.legSeparation*0.7), this.legSeparation*1.4);
 
 					leg.foot.startTransform.position.copy(leg.foot.stickTransform.position);
-	        leg.foot.startTransform.quaternion.copy(leg.foot.stickTransform.quaternion);
+	        // leg.foot.startTransform.quaternion.copy(leg.foot.stickTransform.quaternion);
 
 				   leg.foot.endTransform.position.copy(hipsFloorPosition)
 					  .add(localVector6.set((leg.left ? -1 : 1) * footDistance, 0, 0).applyQuaternion(leg.foot.stickTransform.quaternion))
-					  .add(localVector6.set(this.hmdVelocity.x, 0, this.hmdVelocity.z).multiplyScalar(velocityRestitution));
+					  .add(localVector6.set(this.hmdVelocity.x, 0, this.hmdVelocity.z).multiplyScalar(velocityRestitutionFactor));
 				  // leg.foot.endTransform.quaternion.copy(this.rightLeg.foot.stickTransform.quaternion);
 
-          leg.foot.startTimestamp = Date.now();
-          // const restitutionDistance = leg.foot.startTransform.position.distanceTo(leg.foot.endTransform.position);
-          // leg.foot.stepTime = stepTime / Math.max(localVector6.set(this.hmdVelocity.x, 0, this.hmdVelocity.z).length(), 0.1);
+				  leg.foot.startHmdFloorTransform.position.set(this.poseManager.vrTransforms.head.position.x, 0, this.poseManager.vrTransforms.head.position.z);
+
           leg.foot.stepHeight = stepHeight * this.rig.height;
+          leg.foot.startTimestamp = Date.now();
 	        leg.stepping = true;
 				};
         if (
@@ -311,13 +320,19 @@ class LegsManager {
 
     if (this.leftLeg.stepping) {
 			const now = Date.now();
-			const scaledStepTime = stepTime / Math.max(localVector.set(this.hmdVelocity.x, 0, this.hmdVelocity.z).length(), 0.01);
+			const scaledStepTime = stepTime
+			  / Math.max(
+			  	localVector.set(this.poseManager.vrTransforms.head.position.x, 0, this.poseManager.vrTransforms.head.position.z)
+			  	  .distanceTo(this.leftLeg.foot.startHmdFloorTransform.position),
+			  	minStepDistanceTimeFactor
+			  )
+			  // / Math.max(localVector2.set(this.hmdVelocity.x, 0, this.hmdVelocity.z).length(), minHmdVelocityTimeFactor);
       const stepFactor = Math.min(Math.max((now - this.leftLeg.foot.startTimestamp) / scaledStepTime, 0), 1);
       const xzStepFactor = Math.min(stepFactor * 2, 1);
 
       this.leftLeg.foot.stickTransform.position.copy(this.leftLeg.foot.startTransform.position)
         .lerp(this.leftLeg.foot.endTransform.position, xzStepFactor)
-        .add(localVector.set(0, Math.sin(stepFactor*Math.PI) * this.leftLeg.foot.stepHeight, 0));
+        .add(localVector2.set(0, Math.sin(stepFactor*Math.PI) * this.leftLeg.foot.stepHeight, 0));
       // this.leftLeg.foot.stickTransform.quaternion.copy(this.leftLeg.foot.startTransform.quaternion).slerp(this.leftLeg.foot.endTransform.quaternion, stepFactor);
 
       if (stepFactor >= 1) {
@@ -329,7 +344,13 @@ class LegsManager {
 		}
 		if (this.rightLeg.stepping) {
 			const now = Date.now();
-			const scaledStepTime = stepTime / Math.max(localVector.set(this.hmdVelocity.x, 0, this.hmdVelocity.z).length(), 0.01);
+			const scaledStepTime = stepTime
+			  / Math.max(
+			  	localVector.set(this.poseManager.vrTransforms.head.position.x, 0, this.poseManager.vrTransforms.head.position.z)
+			  	  .distanceTo(this.rightLeg.foot.startHmdFloorTransform.position),
+			  	minStepDistanceTimeFactor
+			  )
+			  // / Math.max(localVector.set(this.hmdVelocity.x, 0, this.hmdVelocity.z).length(), minHmdVelocityTimeFactor);
       const stepFactor = Math.min(Math.max((now - this.rightLeg.foot.startTimestamp) / scaledStepTime, 0), 1);
       const xzStepFactor = Math.min(stepFactor * 2, 1);
 
