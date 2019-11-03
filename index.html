@@ -281,8 +281,7 @@ input[type=text] {
     <script type=module>
 import './webxr-polyfill.module.js';
 import './HelioWebXRPolyfill.js';
-// import 'https://web.exokit.org/ew.js';
-import Rig from './vrarmik/Rig.js';
+import Avatar from './vrarmik/avatars.js';
 
 const peerPoseUpdateRate = 50;
 const floorPlane = new THREE.Plane().setFromNormalAndCoplanarPoint(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 0));
@@ -819,7 +818,7 @@ const _setLocalModel = object => {
   }
 
   model = object;
-  rig = new Rig(model, {
+  rig = new Avatar(model, {
     fingers: true,
     hair: true,
     visemes: true,
@@ -1304,7 +1303,7 @@ connectButton.addEventListener('click', () => {
           }
 
           peerConnection.model = await _loadModelUrl(url);
-          peerConnection.rig = new Rig(peerConnection.model, {
+          peerConnection.rig = new Avatar(peerConnection.model, {
             fingers: true,
             hair: true,
             visemes: true,
