@@ -248,28 +248,33 @@ class Rig {
 	  const _findFoot = left => {
 	  	const regexp = left ? /l/i : /r/i;
 	    const legBones = tailBones.map(tailBone => {
-        const legBone = _findFurthestParentBone(tailBone, bone => (/leg/i.test(bone.name) || /thigh/i.test(bone.name)) && regexp.test(bone.name.replace(/leg|thigh/gi, '')));
-        if (legBone) {
-          const distance = _distanceToParentBone(tailBone, legBone);
-          if (distance >= 2) {
-            return {
-              bone: legBone,
-              distance,
-            };
+        const footBone = _findFurthestParentBone(tailBone, bone => /foot|ankle/i.test(bone.name) && regexp.test(bone.name.replace(/foot|ankle/gi, '')));
+        if (footBone) {
+          const legBone = _findFurthestParentBone(footBone, bone => /leg|thigh/i.test(bone.name) && regexp.test(bone.name.replace(/leg|thigh/gi, '')));
+          if (legBone) {
+            const distance = _distanceToParentBone(footBone, legBone);
+            if (distance >= 2) {
+              return {
+                footBone,
+                distance,
+              };
+            } else {
+            	return null;
+            }
           } else {
-          	return null;
+            return null;
           }
         } else {
-        	return null;
+          return null;
         }
 	    }).filter(spec => spec).sort((a, b) => {
         const diff = b.distance - a.distance;
         if (diff !== 0) {
           return diff;
         } else {
-        	const aName = a.bone.name.replace(/leg|thigh/gi, '');
+        	const aName = a.footBone.name.replace(/foot|ankle/gi, '');
         	const aLeftBalance = _countCharacters(aName, /l/i) - _countCharacters(aName, /r/i);
-        	const bName = b.bone.name.replace(/leg|thigh/gi, '');
+        	const bName = b.footBone.name.replace(/foot|ankle/gi, '');
         	const bLeftBalance = _countCharacters(bName, /l/i) - _countCharacters(bName, /r/i);
         	if (!left) {
         	  return aLeftBalance - bLeftBalance;
@@ -278,9 +283,8 @@ class Rig {
         	}
         }
 	    });
-	    const legBone = legBones.length > 0 ? legBones[0].bone : null;
-	    if (legBone) {
-        const footBone = _traverseChild(legBone, 2);
+	    const footBone = legBones.length > 0 ? legBones[0].footBone : null;
+	    if (footBone) {
         return footBone;
 	    } else {
 	    	return null;
