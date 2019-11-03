@@ -127,6 +127,22 @@ class Rig {
       }
       return Infinity;
 	  };
+    const _findClosestChildBone = (bone, pred) => {
+      const _recurse = bone => {
+        if (pred(bone)) {
+          return bone;
+        } else {
+          for (let i = 0; i < bone.children.length; i++) {
+            const result = _recurse(bone.children[i]);
+            if (result) {
+              return result;
+            }
+          }
+          return null;
+        }
+      }
+      return _recurse(bone);
+    };
 	  const _traverseChild = (bone, distance) => {
 	  	if (distance <= 0) {
 	  		return bone;
@@ -244,7 +260,7 @@ class Rig {
 	    	return null;
 	    }
 	  };
-	  const _findHand = shoulderBone => _traverseChild(shoulderBone, 3);
+	  const _findHand = shoulderBone => _findClosestChildBone(shoulderBone, bone => /hand|wrist/i.test(bone.name));
 	  const _findFoot = left => {
 	  	const regexp = left ? /l/i : /r/i;
 	    const legBones = tailBones.map(tailBone => {
