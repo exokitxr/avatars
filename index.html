@@ -1009,24 +1009,25 @@ function animate(timestamp, frame, referenceSpace) {
       }
     } else {
       const positionOffset = Math.sin((realDateNow()%10000)/10000*Math.PI*2)*2;
+      const positionOffset2 = -Math.sin((realDateNow()%5000)/5000*Math.PI*2)*1;
       const standFactor = rig.height - 0.1*rig.height + Math.sin((realDateNow()%2000)/2000*Math.PI*2)*0.2*rig.height;
       const rotationAngle = (realDateNow()%5000)/5000*Math.PI*2;
 
       // rig.inputs.hmd.position.set(positionOffset, 0.6 + standFactor, 0);
-      rig.inputs.hmd.position.set(positionOffset, standFactor, 0);
+      rig.inputs.hmd.position.set(positionOffset, standFactor, positionOffset2);
       rig.inputs.hmd.quaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), rotationAngle)
         .multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.sin((realDateNow()%2000)/2000*Math.PI*2)*Math.PI*0.2))
         .multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.sin((realDateNow()%2000)/2000*Math.PI*2)*Math.PI*0.25));
 
       rig.inputs.rightGamepad.quaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), rotationAngle)
         // .multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.sin((realDateNow()%5000)/5000*Math.PI*2)*Math.PI*0.6));
-      rig.inputs.rightGamepad.position.set(positionOffset, rig.height*0.7 + Math.sin((realDateNow()%2000)/2000*Math.PI*2)*0.1, 0).add(
+      rig.inputs.rightGamepad.position.set(positionOffset, rig.height*0.7 + Math.sin((realDateNow()%2000)/2000*Math.PI*2)*0.1, positionOffset2).add(
         new THREE.Vector3(-rig.shoulderWidth/2, 0, -0.2).applyQuaternion(rig.inputs.rightGamepad.quaternion)
       )/*.add(
         new THREE.Vector3(-0.1, 0, -1).normalize().multiplyScalar(rig.rightArmLength*0.4).applyQuaternion(rig.inputs.rightGamepad.quaternion)
       ); */
       rig.inputs.leftGamepad.quaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), rotationAngle);
-      rig.inputs.leftGamepad.position.set(positionOffset, rig.height*0.7, 0).add(
+      rig.inputs.leftGamepad.position.set(positionOffset, rig.height*0.7, positionOffset2).add(
         new THREE.Vector3(rig.shoulderWidth/2, 0, -0.2).applyQuaternion(rig.inputs.leftGamepad.quaternion)
       )/*.add(
         new THREE.Vector3(0.1, 0, -1).normalize().multiplyScalar(rig.leftArmLength*0.4).applyQuaternion(rig.inputs.leftGamepad.quaternion)
