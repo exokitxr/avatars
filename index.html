@@ -221,7 +221,6 @@ input[type=text] {
     <script src="OrbitControls.js"></script>
     <script src="Reflector.js"></script>
     <script src="bmfont.js"></script>
-    <script src="https://multiplayer.exokit.org/multiplayer.js"></script>
   </head>
   <body>
     <div class=body>
@@ -276,6 +275,7 @@ import './webxr-polyfill.module.js';
 import './HelioWebXRPolyfill.js';
 import ModelLoader from 'https://model-loader.exokit.org/model-loader.js';
 import Avatar from './vrarmik/avatars.js';
+import {XRChannelConnection} from 'https://multiplayer.exokit.org/multiplayer.js';
 
 const peerPoseUpdateRate = 50;
 const floorPlane = new THREE.Plane().setFromNormalAndCoplanarPoint(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 0));
