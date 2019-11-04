@@ -405,6 +405,11 @@ class Avatar {
     armature.scale.set(1, 1, 1).divideScalar(this.armatureScaleFactor);
     armature.updateMatrix();
 
+    Head.traverse(o => {
+      o.savedPosition = o.position.clone();
+      o.savedMatrixWorld = o.matrixWorld.clone();
+    });
+
     const hairBones = tailBones.filter(bone => /hair/i.test(bone.name)).map(bone => {
       for (; bone; bone = bone.parent) {
         if (bone.parent === Head) {
@@ -726,6 +731,11 @@ class Avatar {
 
     this.shoulderTransforms.Start();
     this.legsManager.Start();
+
+    this.decapitated = false;
+    if (options.decapitate) {
+      this.decapitate();
+    }
 	}
 	update() {
 // return;
@@ -783,15 +793,17 @@ class Avatar {
     }
 
     if (this.options.hair) {
+      const _getMatrixWorld = o => this.decapitated ? o.savedMatrixWorld : o.matrixWorld;
+
       const hipsRotation = this.modelBones.Hips.quaternion;
-      const scale = localVector.setFromMatrixScale(this.modelBones.Head.matrixWorld);;
+      const scale = localVector.setFromMatrixScale(_getMatrixWorld(this.modelBones.Head));
       const _processHairBone = (hairBone, children) => {
-        const p = localVector2.setFromMatrixPosition(hairBone.matrixWorld);
+        const p = localVector2.setFromMatrixPosition(_getMatrixWorld(hairBone));
 
         for (let i = 0; i < children.length; i++) {
           const childHairBone = children[i];
 
-          const px = localVector3.setFromMatrixPosition(childHairBone.matrixWorld);
+          const px = localVector3.setFromMatrixPosition(_getMatrixWorld(childHairBone));
           const hairDistance = px.distanceTo(p);
           const hairDirection = localVector4.copy(px).sub(p).normalize();
 
@@ -820,7 +832,7 @@ class Avatar {
             )),
             childHairBone.initialWorldQuaternion
           );
-          childHairBone.matrixWorld.compose(p2, q2, scale);
+          _getMatrixWorld(childHairBone).compose(p2, q2, scale);
         }
         for (let i = 0; i < children.length; i++) {
           const childHairBone = children[i];
@@ -900,6 +912,27 @@ class Avatar {
         this.volume = this.volume*0.8 + e.data*0.2;
       };
       mediaStreamSource.connect(audioWorkletNode).connect(this.audioContext.destination);
+    }
+  }
+
+  decapitate() {
+    if (!this.decapitated) {
+      this.modelBones.Head.traverse(o => {
+        o.savedPosition.copy(o.position);
+        o.savedMatrixWorld.copy(o.matrixWorld);
+        o.position.set(NaN, NaN, NaN);
+        o.matrixWorld.set(NaN, NaN, NaN, NaN, NaN, NaN, NaN, NaN, NaN, NaN, NaN, NaN, NaN, NaN, NaN, NaN);
+      });
+      this.decapitated = true;
+    }
+  }
+  undecapitate() {
+    if (this.decapitated) {
+      this.modelBones.Head.traverse(o => {
+        o.position.copy(o.savedPosition);
+        o.matrixWorld.copy(o.savedMatrixWorld);
+      });
+      this.decapitated = false;
     }
   }
 }
