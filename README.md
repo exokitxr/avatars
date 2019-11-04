@@ -53,7 +53,7 @@ const avatar = new Avatar(model, { // model is THREE.Mesh, can use https://githu
 
   // animate visemes (blink, mouth, etc.)
   visemes: true,
-  // navigator.getUserMedia({audio: true}); // microphone input for visemes
+  // navigator.mediaDevices.getUserMedia({audio: true}); // microphone input for visemes
   microphoneMediaStream,
   // false to passthrough microphone audio
   muted: true,
