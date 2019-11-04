@@ -59,6 +59,8 @@ const avatar = new Avatar(model, { // model is THREE.Mesh, can use https://githu
   muted: true,
 });
 
+avatar.setMicrophoneMediaStream(microphoneMediaStream); // set microphoneMediaStream separately
+
 function animate() {
   const now = Date.now();
   avatar.inputs.hmd.position.set(1.5 + Math.sin((now%2000)/2000*Math.PI*2)*0.5); // or, get pose from WebXR
