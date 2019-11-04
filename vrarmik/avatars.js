@@ -7,6 +7,7 @@ const zeroVector = new THREE.Vector3();
 const upRotation = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.PI/2);
 const leftRotation = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI/2);
 const rightRotation = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), -Math.PI/2);
+const z180Quaternion = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI);
 
 const localVector = new THREE.Vector3();
 const localVector2 = new THREE.Vector3();
@@ -824,14 +825,10 @@ class Avatar {
           childHairBone.velocity.lerp(zeroVector, 0.2 * timeDiff/32);
 
           const p2 = localVector5.copy(px).add(childHairBone.velocity);
-          const q2 = localQuaternion.multiplyQuaternions(
-            localQuaternion2.setFromRotationMatrix(localMatrix.lookAt(
-              zeroVector,
-              hairDirection,
-              localVector6.set(0, 0, -1).applyQuaternion(hipsRotation),
-            )),
-            childHairBone.initialWorldQuaternion
-          );
+          const q2 = localQuaternion.copy(childHairBone.initialWorldQuaternion).premultiply(hipsRotation);
+          if (this.flipZ) {
+            q2.premultiply(z180Quaternion);
+          }
           _getMatrixWorld(childHairBone).compose(p2, q2, scale);
         }
         for (let i = 0; i < children.length; i++) {
