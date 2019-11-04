@@ -1,5 +1,7 @@
 import {Helpers} from './Unity.js';
 
+const wristToHandDistance = 0.05;
+
 const z180Quaternion = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI);
 
 const localVector = new THREE.Vector3();
@@ -243,8 +245,12 @@ class ShoulderPoser
 
 		getCombinedDirectionAngleUp()
 		{
-			const distanceLeftHand = localVector.subVectors(this.vrTransforms.leftHand.position, Helpers.getWorldPosition(this.shoulder.transform, localVector2));
-			const distanceRightHand = localVector2.subVectors(this.vrTransforms.rightHand.position, Helpers.getWorldPosition(this.shoulder.transform, localVector3));
+			const distanceLeftHand = localVector.copy(this.vrTransforms.leftHand.position)
+			  .add(localVector2.set(0, 0, wristToHandDistance).applyQuaternion(this.vrTransforms.leftHand.quaternion))
+			  .sub(Helpers.getWorldPosition(this.shoulder.transform, localVector2));
+			const distanceRightHand = localVector2.copy(this.vrTransforms.rightHand.position)
+		  	.add(localVector3.set(0, 0, wristToHandDistance).applyQuaternion(this.vrTransforms.rightHand.quaternion))
+			  .sub(Helpers.getWorldPosition(this.shoulder.transform, localVector3));
 
 			/* if (this.ignoreYPos)
 			{ */

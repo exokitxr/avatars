@@ -1,5 +1,7 @@
 import {Helpers} from './Unity.js';
 
+const wristToHandDistance = 0.05;
+
 const zeroVector = new THREE.Vector3();
 const forwardVector = new THREE.Vector3(0, 0, 1);
 const leftRotation = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI/2);
@@ -13,6 +15,7 @@ const localVector2 = new THREE.Vector3();
 const localVector3 = new THREE.Vector3();
 const localVector4 = new THREE.Vector3();
 const localVector5 = new THREE.Vector3();
+const localVector6 = new THREE.Vector3();
 const localQuaternion = new THREE.Quaternion();
 const localQuaternion2 = new THREE.Quaternion();
 const localQuaternion3 = new THREE.Quaternion();
@@ -46,16 +49,8 @@ const localMatrix = new THREE.Matrix4();
 			Helpers.updateMatrixWorld(this.arm.upperArm);
 
 			const upperArmPosition = Helpers.getWorldPosition(this.arm.upperArm, localVector);
-      const handPositionDistance = this.target.position.distanceTo(upperArmPosition);
-      // let handPosition;
-      // if (handPositionDistance < this.armLength) {
-      	const handPosition = this.target.position;
-      /* } else {
-      	handPosition = this.arm.upperArm.position.add(
-      		this.target.position.clone().sub(this.arm.upperArm.position).normalize().multiplyScalar(this.armLength)
-      	);
-      } */
       const handRotation = this.target.quaternion;
+       const handPosition = localVector2.copy(this.target.position).add(localVector3.set(0, 0, wristToHandDistance).applyQuaternion(handRotation));
 
       const shoulderRotation = Helpers.getWorldQuaternion(this.shoulder.transform, localQuaternion);
       const shoulderRotationInverse = localQuaternion2.copy(shoulderRotation).inverse();
@@ -63,11 +58,9 @@ const localMatrix = new THREE.Matrix4();
       const hypotenuseDistance = this.upperArmLength;
 	    const directDistance = upperArmPosition.distanceTo(handPosition) / 2;
       const offsetDistance = hypotenuseDistance > directDistance ? Math.sqrt(hypotenuseDistance*hypotenuseDistance - directDistance*directDistance) : 0;
-      // console.log('offset distance', this.upperArmLength, this.lowerArmLength, hypotenuseDistance, directDistance, offsetDistance);
-      // const outFactor = targetEuler.x < 0 ? (1 - Math.min(Math.max(-targetEuler.x/(Math.PI/4), 0), 1)) : 1;
-      const offsetDirection = localVector2.copy(handPosition).sub(upperArmPosition)
+      const offsetDirection = localVector3.copy(handPosition).sub(upperArmPosition)
         .normalize()
-        .cross(localVector3.set(-1, 0, 0).applyQuaternion(shoulderRotation));
+        .cross(localVector4.set(-1, 0, 0).applyQuaternion(shoulderRotation));
 
       const targetEuler = localEuler.setFromQuaternion(
       	localQuaternion3
@@ -102,13 +95,13 @@ const localMatrix = new THREE.Matrix4();
         .applyAxisAngle(forwardVector, targetEuler.z)
         .applyQuaternion(shoulderRotation);
 
-      const elbowPosition = localVector3.copy(upperArmPosition).add(handPosition).divideScalar(2)
-        .add(localVector4.copy(offsetDirection).multiplyScalar(offsetDistance));
-      const upVector = localVector4.set(this.left ? -1 : 1, 0, 0).applyQuaternion(shoulderRotation);
+      const elbowPosition = localVector4.copy(upperArmPosition).add(handPosition).divideScalar(2)
+        .add(localVector5.copy(offsetDirection).multiplyScalar(offsetDistance));
+      const upVector = localVector5.set(this.left ? -1 : 1, 0, 0).applyQuaternion(shoulderRotation);
       this.arm.upperArm.quaternion.setFromRotationMatrix(
       	localMatrix.lookAt(
 	      	zeroVector,
-	      	localVector5.copy(elbowPosition).sub(upperArmPosition),
+	      	localVector6.copy(elbowPosition).sub(upperArmPosition),
 	      	upVector
 	      )
       )
@@ -120,7 +113,7 @@ const localMatrix = new THREE.Matrix4();
       this.arm.lowerArm.quaternion.setFromRotationMatrix(
         localMatrix.lookAt(
 	      	zeroVector,
-	      	localVector5.copy(handPosition).sub(elbowPosition),
+	      	localVector6.copy(handPosition).sub(elbowPosition),
 	      	upVector
 	      )
       )
