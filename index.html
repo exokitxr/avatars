@@ -543,20 +543,6 @@ const colors = {
   normal: 0x5c6bc0,
   highlight: 0x303f9f,
 };
-const _unloadSavedHead = () => {
-  rig.modelBones.Head.traverse(o => {
-    o.savedPosition.copy(o.position);
-    o.savedMatrixWorld.copy(o.matrixWorld);
-    o.position.set(NaN, NaN, NaN);
-    o.matrixWorld.set(NaN, NaN, NaN, NaN, NaN, NaN, NaN, NaN, NaN, NaN, NaN, NaN, NaN, NaN, NaN, NaN);
-  });
-};
-const _loadSavedHead = () => {
-  rig.modelBones.Head.traverse(o => {
-    o.position.copy(o.savedPosition);
-    o.matrixWorld.copy(o.savedMatrixWorld);
-  });
-};
 const mirrorMesh = (() => {
   const geometry = new THREE.PlaneBufferGeometry(1, 2)
     .applyMatrix(new THREE.Matrix4().makeTranslation(0, 1, 0));
@@ -613,13 +599,13 @@ const mirrorMesh = (() => {
 
   mesh.onBeforeRender2 = () => {
     if (rig) {
-      _loadSavedHead();
+      rig.undecapitate();
       // meshDolly.visible = true;
     }
   };
   mesh.onAfterRender2 = () => {
     if (rig) {
-      _unloadSavedHead();
+      rig.decapitate();
       // meshDolly.visible = false;
     }
   };
@@ -648,11 +634,8 @@ const _setLocalModel = object => {
     fingers: true,
     hair: true,
     visemes: true,
+    decapitate: true,
     microphoneMediaStream,
-  });
-  rig.modelBones.Head.traverse(o => {
-    o.savedPosition = new THREE.Vector3();
-    o.savedMatrixWorld = new THREE.Matrix4();
   });
   meshDolly.add(model);
   window.model = model;
@@ -887,15 +870,15 @@ function animate(timestamp, frame, referenceSpace) {
     }
   }
 
-  if (rig) {
-    _unloadSavedHead();
-  }
+  /* if (rig) {
+    rig.decapitate();
+  } */
 
   renderer.render(scene, camera);
 
-  if (rig) {
-    _loadSavedHead();
-  }
+  /* if (rig) {
+    rig.undecapitate();
+  } */
 }
 renderer.setAnimationLoop(animate);
 
