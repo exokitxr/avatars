@@ -35,3 +35,32 @@ The only web-based avatar system you need.
 - Walking kinematics
 - Face animation (visemes) with microphone
 - Hair/clothing animation
+
+## How it works
+
+```
+import './three.js';
+import Avatar from 'https://avatars.exokit.org/avatars.js';
+import ModelLoader from 'https://model-loader.exokit.org/model-loader.js';
+
+const model = await ModelLoader.loadFromUrl('model.glb'); // or any THREE.Mesh
+const avatar = new Avatar(model, {
+  fingers: true,
+  hair: true,
+  visemes: true,
+  microphoneMediaStream, // navigator.getUserMedia({audio: true})
+  muted: true,
+});
+
+function animate() {
+  const now = Date.now();
+  avatar.inputs.hmd.position.set(1.5 + Math.sin((now%2000)/2000*Math.PI*2)*0.5); // or, get pose from WebXR
+  avatar.leftGamepad.hmd.position.copy(avatar.inputs.hmd.position).add(new THREE.Vector3(0.2, -0.3, -0.3));
+  avatar.rightGamepad.hmd.position.copy(avatar.inputs.hmd.position).add(new THREE.Vector3(-0.2, -0.3, -0.3));
+
+  avatar.update();
+
+  requestAnimationFrame(animate);
+}
+animate();
+```
