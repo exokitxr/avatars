@@ -219,14 +219,7 @@ input[type=text] {
     </style>
     <script src="three.js"></script>
     <script src="OrbitControls.js"></script>
-    <script src="GLTFLoader.js"></script>
-    <script src="FBXLoader.js"></script>
-    <script src="inflate.min.js"></script>
     <script src="Reflector.js"></script>
-    <script src="gunzip.min.js"></script>
-    <script src="ProgressivePromise.js"></script>
-    <script src="untar.js"></script>
-    <script src="zip.js"></script>
     <script src="bmfont.js"></script>
     <script src="https://multiplayer.exokit.org/multiplayer.js"></script>
   </head>
@@ -281,6 +274,7 @@ input[type=text] {
     <script type=module>
 import './webxr-polyfill.module.js';
 import './HelioWebXRPolyfill.js';
+import ModelLoader from 'https://model-loader.exokit.org/model-loader.js';
 import Avatar from './vrarmik/avatars.js';
 
 const peerPoseUpdateRate = 50;
