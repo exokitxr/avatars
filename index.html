@@ -525,6 +525,10 @@ for (let i = 0; i < aAvatars.length; i++) {
     const model = await _loadModelUrl(href);
     _setLocalModel(model);
     modelUrl = href;
+    _sendAllPeerConnections(JSON.stringify({
+      method: 'model',
+      url: modelUrl,
+    }));
   });
 }
 
@@ -984,6 +988,11 @@ disableMicButton.addEventListener('click', async () => {
 
 let channelConnection = null;
 const peerConnections = [];
+const _sendAllPeerConnections = s => {
+  for (let i = 0; i < peerConnections.length; i++) {
+    peerConnections[i].send(s);
+  }
+};
 const channelInput = document.getElementById('channel-input');
 const connectButton = document.getElementById('connect-button');
 connectButton.addEventListener('click', () => {
@@ -1243,6 +1252,10 @@ connectButton.addEventListener('click', () => {
   const model = await _loadModelUrl(url);
   _setLocalModel(model);
   modelUrl = url;
+  _sendAllPeerConnections(JSON.stringify({
+    method: 'model',
+    url: modelUrl,
+  }));
 })();
     </script>
   </body>
