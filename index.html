@@ -609,7 +609,7 @@ const mirrorMesh = (() => {
     }
   };
   mesh.onAfterRender2 = () => {
-    if (rig) {
+    if (rig && session) {
       rig.decapitate();
       // meshDolly.visible = false;
     }
@@ -639,7 +639,7 @@ const _setLocalModel = object => {
     fingers: true,
     hair: true,
     visemes: true,
-    decapitate: true,
+    // decapitate: true,
     microphoneMediaStream,
   });
   meshDolly.add(model);
