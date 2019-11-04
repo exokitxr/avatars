@@ -51,6 +51,9 @@ const avatar = new Avatar(model, { // model is THREE.Mesh, can use https://githu
   // animate hair
   hair: true,
 
+  // remove head for first person
+  decapitate: false,
+
   // animate visemes (blink, mouth, etc.)
   visemes: true,
   // navigator.mediaDevices.getUserMedia({audio: true}); // microphone input for visemes
