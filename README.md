@@ -41,14 +41,21 @@ The only web-based avatar system you need.
 ```
 import './three.js';
 import Avatar from 'https://avatars.exokit.org/avatars.js';
-import ModelLoader from 'https://model-loader.exokit.org/model-loader.js';
 
-const model = await ModelLoader.loadFromUrl('model.glb'); // or any THREE.Mesh
-const avatar = new Avatar(model, {
+const avatar = new Avatar(model, { // model is THREE.Mesh, can use https://github.com/exokitxr/model-loader
+  // all options are optional
+
+  // animate fingers
   fingers: true,
+
+  // animate hair
   hair: true,
+
+  // animate visemes (blink, mouth, etc.)
   visemes: true,
-  microphoneMediaStream, // navigator.getUserMedia({audio: true})
+  // navigator.getUserMedia({audio: true}); // microphone input for visemes
+  microphoneMediaStream,
+  // false to passthrough microphone audio
   muted: true,
 });
 
@@ -56,6 +63,8 @@ function animate() {
   const now = Date.now();
   avatar.inputs.hmd.position.set(1.5 + Math.sin((now%2000)/2000*Math.PI*2)*0.5); // or, get pose from WebXR
   avatar.leftGamepad.hmd.position.copy(avatar.inputs.hmd.position).add(new THREE.Vector3(0.2, -0.3, -0.3));
+  avatar.leftGamepad.pointer = 0.5; // for finger animation
+  avatar.leftGamepad.grip = 1;
   avatar.rightGamepad.hmd.position.copy(avatar.inputs.hmd.position).add(new THREE.Vector3(-0.2, -0.3, -0.3));
 
   avatar.update();
