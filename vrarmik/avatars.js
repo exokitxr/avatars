@@ -397,13 +397,9 @@ class Avatar {
 
     const armatureQuaternion = armature.quaternion.clone();
     const armatureMatrixInverse = new THREE.Matrix4().getInverse(armature.matrixWorld);
-    const armatureScale = armature.scale.clone();
     armature.position.set(0, 0, 0);
     armature.quaternion.set(0, 0, 0, 1);
-    this.armatureScaleFactor = Head.getWorldPosition(new THREE.Vector3())
-      .distanceTo(Left_ankle.getWorldPosition(new THREE.Vector3()))
-      / Math.abs(armature.scale.y) > 100 ? 100 : 1;
-    armature.scale.set(1, 1, 1).divideScalar(this.armatureScaleFactor);
+    armature.scale.set(1, 1, 1);
     armature.updateMatrix();
 
     Head.traverse(o => {
@@ -423,7 +419,7 @@ class Avatar {
       hairBones.forEach(rootHairBone => {
         rootHairBone.traverse(hairBone => {
           hairBone.length = hairBone.position.length();
-          hairBone.worldParentOffset = hairBone.getWorldPosition(new THREE.Vector3()).sub(hairBone.parent.getWorldPosition(new THREE.Vector3())).divide(armatureScale);
+          hairBone.worldParentOffset = hairBone.getWorldPosition(new THREE.Vector3()).sub(hairBone.parent.getWorldPosition(new THREE.Vector3()));
           hairBone.initialWorldQuaternion = hairBone.getWorldQuaternion(new THREE.Quaternion());
           hairBone.velocity = new THREE.Vector3();
           if (hairBone !== rootHairBone) {
@@ -749,7 +745,7 @@ class Avatar {
       const modelBoneOutput = this.modelBoneOutputs[k];
 
       if (k === 'Hips') {
-        modelBone.position.copy(modelBoneOutput.position).multiplyScalar(this.armatureScaleFactor);
+        modelBone.position.copy(modelBoneOutput.position);
       }
       modelBone.quaternion.multiplyQuaternions(modelBoneOutput.quaternion, modelBone.initialQuaternion)
 
