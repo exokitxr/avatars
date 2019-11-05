@@ -1259,6 +1259,11 @@ connectButton.addEventListener('click', () => {
     url: modelUrl,
   }));
 })();
+
+window.addEventListener('resize', e => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+});
     </script>
   </body>
 </html>
