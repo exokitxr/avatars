@@ -1,3 +1,4 @@
+import './three-vrm.js';
 import {fixSkeletonZForward} from './SkeletonUtils.js';
 import PoseManager from './PoseManager.js';
 import ShoulderTransforms from './ShoulderTransforms.js';
@@ -60,7 +61,7 @@ const _copySkeleton = (src, dst) => {
 class Avatar {
 	constructor(object, options = {}) {
     const model = object.isMesh ? object : object.scene;
-    // this.model = model;
+    // this.model = typeof model;
     this.options = options;
 
     model.updateMatrixWorld(true);
@@ -408,6 +409,17 @@ class Avatar {
       o.savedMatrixWorld = o.matrixWorld.clone();
     });
 
+    const allHairBones = [];
+    const _recurseAllHairBones = bones => {
+      for (let i = 0; i < bones.length; i++) {
+        const bone = bones[i];
+        if (/hair/i.test(bone.name)) {
+          allHairBones.push(bone);
+        }
+        _recurseAllHairBones(bone.children);
+      }
+    };
+    _recurseAllHairBones(skeleton.bones);
     const hairBones = tailBones.filter(bone => /hair/i.test(bone.name)).map(bone => {
       for (; bone; bone = bone.parent) {
         if (bone.parent === Head) {
@@ -416,21 +428,67 @@ class Avatar {
       }
       return null;
     }).filter(bone => bone);
+    this.allHairBones = allHairBones;
+    this.hairBones = hairBones;
+
+    this.springBoneManager = null;
     if (options.hair) {
-      hairBones.forEach(rootHairBone => {
-        rootHairBone.traverse(hairBone => {
-          hairBone.length = hairBone.position.length();
-          hairBone.worldParentOffset = hairBone.getWorldPosition(new THREE.Vector3()).sub(hairBone.parent.getWorldPosition(new THREE.Vector3()));
-          hairBone.initialWorldQuaternion = hairBone.getWorldQuaternion(new THREE.Quaternion());
-          hairBone.velocity = new THREE.Vector3();
-          if (hairBone !== rootHairBone) {
-            hairBone._updateMatrixWorld = hairBone.updateMatrixWorld;
-            hairBone.updateMatrixWorld = () => {};
-          }
-        });
+      new Promise((accept, reject) => {
+        if (!object.parser) {
+          object.parser = {
+            json: {
+              extensions: {},
+            },
+          };
+        }
+        if (!object.parser.json.extensions) {
+          object.parser.json.extensions = {};
+        }
+        if (!object.parser.json.extensions.VRM) {
+          object.parser.json.extensions.VRM = {
+            secondaryAnimation: {
+              boneGroups: this.hairBones.map(hairBone => {
+                const boneIndices = [];
+                const _recurse = bone => {
+                  boneIndices.push(this.allHairBones.indexOf(bone));
+                  if (bone.children.length > 0) {
+                    _recurse(bone.children[0]);
+                  }
+                };
+                _recurse(hairBone);
+                return {
+                  comment: hairBone.name,
+                  stiffiness: 0.5,
+                  gravityPower: 0.2,
+                  gravityDir: {
+                    x: 0,
+                    y: -1,
+                    z: 0
+                  },
+                  dragForce: 0.3,
+                  center: -1,
+                  hitRadius: 0.02,
+                  bones: boneIndices,
+                  colliderGroups: [],
+                };
+              }),
+            },
+          };
+          object.parser.getDependency = async (type, nodeIndex) => {
+            if (type === 'node') {
+              return this.allHairBones[nodeIndex];
+            } else {
+              throw new Error('unsupported type');
+            }
+          };
+        }
+
+        new THREE.VRMSpringBoneImporter().import(object)
+          .then(springBoneManager => {
+            this.springBoneManager = springBoneManager;
+          });
       });
     }
-    this.hairBones = hairBones;
 
     const _findFinger = (r, left) => {
       const fingerTipBone = tailBones
@@ -790,50 +848,15 @@ class Avatar {
       _processFingerBones(false);
     }
 
-    if (this.options.hair) {
-      const _getMatrixWorld = o => this.decapitated ? o.savedMatrixWorld : o.matrixWorld;
-
-      const hipsRotation = this.modelBones.Hips.quaternion;
-      const scale = localVector.setFromMatrixScale(_getMatrixWorld(this.modelBones.Head));
-      const _processHairBone = (hairBone, children) => {
-        const p = localVector2.setFromMatrixPosition(_getMatrixWorld(hairBone));
-
-        for (let i = 0; i < children.length; i++) {
-          const childHairBone = children[i];
-
-          const px = localVector3.setFromMatrixPosition(_getMatrixWorld(childHairBone));
-          const hairDistance = px.distanceTo(p);
-          const hairDirection = localVector4.copy(px).sub(p).normalize();
-
-          const hairLength = childHairBone.length * scale.y;
-
-          if (hairDistance > hairLength * 2) {
-            px.copy(p).add(localVector5.copy(hairDirection).multiplyScalar(hairLength * 2));
-          }
-
-          const l = childHairBone.velocity.length();
-          if (l > 0.05) {
-            childHairBone.velocity.multiplyScalar(0.05/l);
-          }
-
-          childHairBone.velocity.add(localVector5.copy(hairDirection).multiplyScalar(-(hairDistance - hairLength) * 0.1 * timeDiff/32));
-          childHairBone.velocity.add(localVector5.set(0, -9.8, 0).multiply(scale).multiplyScalar(0.0002 * timeDiff/32));
-          childHairBone.velocity.add(localVector5.copy(childHairBone.worldParentOffset).multiply(scale).applyQuaternion(hipsRotation).multiplyScalar(0.03 * timeDiff/32));
-          childHairBone.velocity.lerp(zeroVector, 0.2 * timeDiff/32);
-
-          const p2 = localVector5.copy(px).add(childHairBone.velocity);
-          const q2 = localQuaternion.copy(childHairBone.initialWorldQuaternion).premultiply(hipsRotation);
-          if (this.flipZ) {
-            q2.premultiply(z180Quaternion);
-          }
-          _getMatrixWorld(childHairBone).compose(p2, q2, scale);
-        }
-        for (let i = 0; i < children.length; i++) {
-          const childHairBone = children[i];
-          _processHairBone(childHairBone, childHairBone.children);
-        }
-      };
-      _processHairBone(this.modelBones.Head, this.hairBones);
+    if (this.springBoneManager) {
+      const wasDecapitated = this.decapitated;
+      if (wasDecapitated) {
+        this.undecapitate();
+      }
+      this.springBoneManager.lateUpdate(timeDiff / 1000);
+      if (wasDecapitated) {
+        this.decapitate();
+      }
     }
 
     if (this.options.visemes) {
