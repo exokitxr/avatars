@@ -618,7 +618,7 @@ class Avatar {
 	  });
 	  model.traverse(o => {
 	    if (o.isSkinnedMesh) {
-	      o.bind(skeleton);
+	      o.bind(o.skeleton);
 	    }
 	  });
     if (flipY) {
