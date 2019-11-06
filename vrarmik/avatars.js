@@ -58,8 +58,9 @@ const _copySkeleton = (src, dst) => {
 };
 
 class Avatar {
-	constructor(model, options = {}) {
-    this.model = model;
+	constructor(object, options = {}) {
+    const model = object.isMesh ? object : object.scene;
+    // this.model = model;
     this.options = options;
 
     model.updateMatrixWorld(true);

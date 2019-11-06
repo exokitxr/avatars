@@ -630,23 +630,23 @@ let model = null;
 let modelUrl = '';
 // let heightOffset = 0;
 let heightFactor = 0;
-const _setLocalModel = object => {
+const _setLocalModel = newModel => {
   if (rig) {
-    meshDolly.remove(model);
+    meshDolly.remove(model.scene);
     rig = null;
     model = null;
   }
 
-  model = object.scene;
-  rig = new Avatar(model, {
+  model = newModel;
+  rig = new Avatar(newModel, {
     fingers: true,
     hair: true,
     visemes: true,
     // decapitate: true,
     microphoneMediaStream,
   });
-  meshDolly.add(model);
-  window.model = object;
+  meshDolly.add(model.scene);
+  window.model = newModel;
 
   // heightOffset = userHeight - rig.height;
   heightFactor = _getHeightFactor(rig.height);
@@ -1070,7 +1070,7 @@ connectButton.addEventListener('click', () => {
         clearInterval(updateInterval);
 
         if (peerConnection.model) {
-          scene.remove(peerConnection.model);
+          scene.remove(peerConnection.model.scene);
         }
       });
       peerConnection.addEventListener('pose', e => {
@@ -1121,7 +1121,7 @@ connectButton.addEventListener('click', () => {
           console.log('got peer model', {url});
 
           if (peerConnection.model) {
-            scene.remove(peerConnection.model);
+            scene.remove(peerConnection.model.scene);
           }
 
           peerConnection.model = await _loadModelUrl(url);
@@ -1132,7 +1132,7 @@ connectButton.addEventListener('click', () => {
             microphoneMediaStream: peerConnection.mediaStream,
             muted: false,
           });
-          scene.add(peerConnection.model);
+          scene.add(peerConnection.model.scene);
 
           peerConnection.rig.starts = {
             hmd: {
