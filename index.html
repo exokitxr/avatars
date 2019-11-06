@@ -441,8 +441,8 @@ const teleportMeshes = [
 scene.add(teleportMeshes[0]);
 scene.add(teleportMeshes[1]);
 
-const _patchModel = model => {
-  model.traverse(o => {
+const _patchModel = object => {
+  object.scene.traverse(o => {
     if (o.isMesh) {
       o.frustumCulled = false;
 
@@ -637,7 +637,7 @@ const _setLocalModel = object => {
     model = null;
   }
 
-  model = object;
+  model = object.scene;
   rig = new Avatar(model, {
     fingers: true,
     hair: true,
@@ -646,7 +646,7 @@ const _setLocalModel = object => {
     microphoneMediaStream,
   });
   meshDolly.add(model);
-  window.model = model;
+  window.model = object;
 
   // heightOffset = userHeight - rig.height;
   heightFactor = _getHeightFactor(rig.height);
