@@ -365,6 +365,9 @@ header > .login-form.phase-3 > .phaseless-content
             <input type="file" id="upload-file-button" style="display: none">
           </label>
         </div>
+        <div class=multibutton>
+          <nav class="button first last" id=export-model-button>Export model</nav>
+        </div>
         <h3>Multiplayer</h3>
         <input type=text value="avaer/yatis" placeholder="user/channel" id=channel-input>
         <div class=multibutton>
@@ -1465,6 +1468,23 @@ loginForm.onsubmit = async e => {
     loginForm.classList.add('phase-1'); */
   }
 };
+
+const exportModelButton = document.getElementById('export-model-button');
+exportModelButton.addEventListener('click', async () => {
+  const ab = await model.export();
+  const b = new Blob([ab], {type: 'model/gltf-binary'});
+  const u = URL.createObjectURL(b);
+
+  const a = document.createElement('a');
+  a.download = 'model.glb';
+  a.href = u;
+  a.style.display = 'none';
+  document.body.appendChild(a);
+  a.click();
+
+  document.body.removeChild(a);
+  URL.revokeObjectURL(u);
+});
 
 (async () => {
   const localLoginToken = await storage.get('loginToken');
