@@ -966,18 +966,24 @@ function animate(timestamp, frame, referenceSpace) {
       const _processScale = () => {
         const startDistance = startGripPositions[0].distanceTo(startGripPositions[1]);
         const currentDistance = lastPositions[0].distanceTo(lastPositions[1]);
-        const scaleFactor = startDistance / currentDistance;
+        const scaleFactor = currentDistance / startDistance;
 
-        const startGripPosition = localVector.copy(startGripPositions[0]).add(startGripPositions[1]).divideScalar(2);
-        const currentGripPosition = localVector2.copy(lastPositions[0]).add(lastPositions[1]).divideScalar(2);
+        const startGripPosition = localVector.copy(startGripPositions[0]).add(startGripPositions[1]).divideScalar(2)
+          .divideScalar(heightFactor)
+          .sub(cameraDolly.position);
+        const currentGripPosition = localVector2.copy(lastPositions[0]).add(lastPositions[1]).divideScalar(2)
+          .divideScalar(heightFactor)
+          .sub(cameraDolly.position);
+        startGripPosition.applyMatrix4(localMatrix.getInverse(startSceneMatrix));
+        currentGripPosition.applyMatrix4(localMatrix/*.getInverse(startSceneMatrix)*/);
+
         const positionDiff = localVector3.copy(currentGripPosition).sub(startGripPosition);
 
-        scene.matrix.getInverse(startSceneMatrix)
-          .multiply(localMatrix.makeTranslation(-positionDiff.x, -positionDiff.y, -positionDiff.z))
+        scene.matrix.copy(startSceneMatrix)
           .multiply(localMatrix.makeTranslation(currentGripPosition.x, currentGripPosition.y, currentGripPosition.z))
           .multiply(localMatrix.makeScale(scaleFactor, scaleFactor, scaleFactor))
           .multiply(localMatrix.makeTranslation(-currentGripPosition.x, -currentGripPosition.y, -currentGripPosition.z))
-          .getInverse(scene.matrix)
+          .multiply(localMatrix.makeTranslation(positionDiff.x, positionDiff.y, positionDiff.z))
           .decompose(scene.position, scene.quaternion, scene.scale);
       };
       const isLastGripped = lastGrips[0] && lastGrips[1];
