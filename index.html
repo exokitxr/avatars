@@ -412,6 +412,8 @@ const floorPlane = new THREE.Plane().setFromNormalAndCoplanarPoint(new THREE.Vec
 const localVector = new THREE.Vector3();
 const localVector2 = new THREE.Vector3();
 const localVector3 = new THREE.Vector3();
+const localVector4 = new THREE.Vector3();
+const localVector5 = new THREE.Vector3();
 const localQuaternion = new THREE.Quaternion();
 const localMatrix = new THREE.Matrix4();
 const localEuler = new THREE.Euler();
@@ -423,9 +425,6 @@ const camera = new THREE.PerspectiveCamera(90, window.innerWidth / window.innerH
 camera.position.y = 1.5;
 camera.position.z = 2;
 // camera.rotation.y = Math.PI;
-
-const cameraDolly = new THREE.Object3D();
-// cameraDolly.add(camera);
 
 const ambientLight = new THREE.AmbientLight(0x808080);
 scene.add(ambientLight);
@@ -802,7 +801,7 @@ function animate(timestamp, frame, referenceSpace) {
       const {inputSources} = session;
       const gamepads = navigator.getGamepads();
 
-      rig.inputs.hmd.position.copy(vrCamera.position).multiplyScalar(heightFactor);
+      rig.inputs.hmd.position.copy(vrCamera.position).applyMatrix4(new THREE.Matrix4().getInverse(scene.matrixWorld));
       rig.inputs.hmd.quaternion.copy(vrCamera.quaternion);
 
       const _getGamepad = i => {
@@ -813,9 +812,8 @@ function animate(timestamp, frame, referenceSpace) {
           const {transform} = pose;
           const {position, orientation, matrix} = transform;
           if (position) { // new WebXR api
-            const p = localVector.copy(position)
-              .add(cameraDolly.position)
-              .multiplyScalar(heightFactor);
+            const rawP = localVector.copy(position);
+            const p = localVector2.copy(rawP).applyMatrix4(new THREE.Matrix4().getInverse(scene.matrixWorld));
             const q = localQuaternion.copy(orientation);
             const pressed = gamepad.buttons[0].pressed;
             const lastPressed = lastPresseds[i];
@@ -826,6 +824,7 @@ function animate(timestamp, frame, referenceSpace) {
             const padX = gamepad.axes[0] !== 0 ? gamepad.axes[0] : gamepad.axes[2];
             const padY = gamepad.axes[1] !== 0 ? gamepad.axes[1] : gamepad.axes[3];
             return {
+              rawPosition: rawP,
               position: p,
               quaternion: q,
               pressed,
@@ -838,15 +837,14 @@ function animate(timestamp, frame, referenceSpace) {
               padY,
             };
           } else if (matrix) { // old WebXR api
-            const p = localVector;
+            const rawP = localVector;
+            const p = localVector2;
             const q = localQuaternion;
-            const s = localVector2;
+            const s = localVector3;
             localMatrix
               .fromArray(transform.matrix)
-              .decompose(p, q, s);
-            p
-              .add(cameraDolly.position)
-              .multiplyScalar(heightFactor);
+              .decompose(rawP, q, s);
+            p.copy(rawP).applyMatrix4(new THREE.Matrix4().getInverse(scene.matrixWorld));
             const pressed = gamepad.buttons[0].pressed;
             const lastPressed = lastPresseds[i];
             const pointer = gamepad.buttons[0].value;
@@ -856,6 +854,7 @@ function animate(timestamp, frame, referenceSpace) {
             const padX = gamepad.axes[0] !== 0 ? gamepad.axes[0] : gamepad.axes[2];
             const padY = gamepad.axes[1] !== 0 ? gamepad.axes[1] : gamepad.axes[3];
             return {
+              rawPosition: rawP,
               position: p,
               quaternion: q,
               pressed,
@@ -896,16 +895,17 @@ function animate(timestamp, frame, referenceSpace) {
             }
           }
         } else if (lastPad) {
-          teleportMesh.getWorldPosition(cameraDolly.position);
+          teleportMesh.getWorldPosition(localVector);
+          localVector.y = 0;
+          scene.position.sub(localVector);
         }
 
         if (padX !== 0 || padY !== 0) {
           const hmdEuler = localEuler.setFromQuaternion(rig.inputs.hmd.quaternion, 'YXZ');
           localEuler.x = 0;
           localEuler.z = 0;
-          cameraDolly.position.add(localVector.set(padX, 0, padY).applyEuler(hmdEuler).multiplyScalar(0.03));
+          scene.position.sub(localVector.set(padX, 0, padY).applyEuler(hmdEuler).multiplyScalar(0.03));
         }
-        cameraDolly.updateMatrixWorld(true);
       };
 
       const wasLastGripped = lastGrips[0] && lastGrips[1];
@@ -913,7 +913,7 @@ function animate(timestamp, frame, referenceSpace) {
       const lg = _getGamepad(1);
       let li = -1;
       if (lg) {
-        const {position, quaternion, pressed, lastPressed, pointer, grip, lastGrip, pad, padX, padY} = lg;
+        const {rawPosition, position, quaternion, pressed, lastPressed, pointer, grip, lastGrip, pad, padX, padY} = lg;
         rig.inputs.leftGamepad.quaternion.copy(quaternion);
         rig.inputs.leftGamepad.position.copy(position);
         rig.inputs.leftGamepad.pointer = pointer;
@@ -931,12 +931,12 @@ function animate(timestamp, frame, referenceSpace) {
         lastPresseds[0] = pressed;
         lastPads[0] = pad;
         lastGrips[0] = grip;
-        lastPositions[0].copy(position);
+        lastPositions[0].copy(rawPosition);
       }
       const rg = _getGamepad(0);
       let ri = -1;
       if (rg) {
-        const {position, quaternion, pressed, lastPressed, pointer, grip, lastGrip, pad, padX, padY} = rg;
+        const {rawPosition, position, quaternion, pressed, lastPressed, pointer, grip, lastGrip, pad, padX, padY} = rg;
         rig.inputs.rightGamepad.quaternion.copy(quaternion);
         rig.inputs.rightGamepad.position.copy(position);
         rig.inputs.rightGamepad.pointer = pointer;
@@ -954,7 +954,7 @@ function animate(timestamp, frame, referenceSpace) {
         lastPresseds[1] = pressed;
         lastPads[1] = pad;
         lastGrips[1] = grip;
-        lastPositions[1].copy(position);
+        lastPositions[1].copy(rawPosition);
       }
 
       const _startScale = () => {
@@ -968,16 +968,14 @@ function animate(timestamp, frame, referenceSpace) {
         const currentDistance = lastPositions[0].distanceTo(lastPositions[1]);
         const scaleFactor = currentDistance / startDistance;
 
-        const startGripPosition = localVector.copy(startGripPositions[0]).add(startGripPositions[1]).divideScalar(2)
-          .divideScalar(heightFactor)
-          .sub(cameraDolly.position);
-        const currentGripPosition = localVector2.copy(lastPositions[0]).add(lastPositions[1]).divideScalar(2)
-          .divideScalar(heightFactor)
-          .sub(cameraDolly.position);
+        let startGripPosition = localVector3.copy(startGripPositions[0]).add(startGripPositions[1]).divideScalar(2)
+          .divideScalar(heightFactor);
+        let currentGripPosition = localVector4.copy(lastPositions[0]).add(lastPositions[1]).divideScalar(2)
+          .divideScalar(heightFactor);
         startGripPosition.applyMatrix4(localMatrix.getInverse(startSceneMatrix));
         currentGripPosition.applyMatrix4(localMatrix/*.getInverse(startSceneMatrix)*/);
 
-        const positionDiff = localVector3.copy(currentGripPosition).sub(startGripPosition);
+        const positionDiff = localVector5.copy(currentGripPosition).sub(startGripPosition);
 
         scene.matrix.copy(startSceneMatrix)
           .multiply(localMatrix.makeTranslation(currentGripPosition.x, currentGripPosition.y, currentGripPosition.z))
@@ -985,6 +983,8 @@ function animate(timestamp, frame, referenceSpace) {
           .multiply(localMatrix.makeTranslation(-currentGripPosition.x, -currentGripPosition.y, -currentGripPosition.z))
           .multiply(localMatrix.makeTranslation(positionDiff.x, positionDiff.y, positionDiff.z))
           .decompose(scene.position, scene.quaternion, scene.scale);
+
+        // _startScale();
       };
       const isLastGripped = lastGrips[0] && lastGrips[1];
       if (!wasLastGripped && isLastGripped) {
@@ -1070,7 +1070,6 @@ enterXrButton.addEventListener('click', async () => {
   /* if (model) {
     meshDolly.visible = false;
   } */
-  cameraDolly.add(camera);
   let referenceSpace;
   let referenceSpaceType = '';
   const _loadReferenceSpace = async () => {
