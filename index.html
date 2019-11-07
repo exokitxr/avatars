@@ -691,7 +691,7 @@ const mirrorMesh = (() => {
   });
   mesh.position.set(0, 0, -1);
 
-  const buttonMeshes = aAvatars.slice(0, 5).map((aAvatar, i) => {
+  const buttonMeshes = aAvatars.map((aAvatar, i) => {
     const geometry = buttonGeometry;
     const material = new THREE.MeshPhongMaterial({
       color: colors.normal,
