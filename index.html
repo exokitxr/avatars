@@ -413,6 +413,7 @@ const localVector = new THREE.Vector3();
 const localVector2 = new THREE.Vector3();
 const localVector3 = new THREE.Vector3();
 const localQuaternion = new THREE.Quaternion();
+const localMatrix = new THREE.Matrix4();
 const localEuler = new THREE.Euler();
 const localRay = new THREE.Ray();
 
@@ -786,7 +787,11 @@ const _setLocalModel = newModel => {
 };
 
 const lastPresseds = [false, false];
+const lastGrips = [false, false];
 const lastPads = [false, false];
+const lastPositions = [new THREE.Vector3(), new THREE.Vector3()];
+const startGripPositions = [new THREE.Vector3(), new THREE.Vector3()];
+const startSceneMatrix = new THREE.Matrix4();
 const dateOffset = Math.floor(Math.random() * 60 * 1000);
 const realDateNow = (now => () => dateOffset + now())(Date.now);
 function animate(timestamp, frame, referenceSpace) {
@@ -816,6 +821,7 @@ function animate(timestamp, frame, referenceSpace) {
             const lastPressed = lastPresseds[i];
             const pointer = gamepad.buttons[0].value;
             const grip = gamepad.buttons[1].value;
+            const lastGrip = lastGrips[i];
             const pad = gamepad.axes[1] <= -0.5 || gamepad.axes[3] <= -0.5;
             const padX = gamepad.axes[0] !== 0 ? gamepad.axes[0] : gamepad.axes[2];
             const padY = gamepad.axes[1] !== 0 ? gamepad.axes[1] : gamepad.axes[3];
@@ -825,6 +831,7 @@ function animate(timestamp, frame, referenceSpace) {
               pressed,
               lastPressed,
               pointer,
+              lastGrip,
               grip,
               pad,
               padX,
@@ -844,6 +851,7 @@ function animate(timestamp, frame, referenceSpace) {
             const lastPressed = lastPresseds[i];
             const pointer = gamepad.buttons[0].value;
             const grip = gamepad.buttons[1].value;
+            const lastGrip = lastGrips[i];
             const pad = gamepad.axes[1] <= -0.5 || gamepad.axes[3] <= -0.5;
             const padX = gamepad.axes[0] !== 0 ? gamepad.axes[0] : gamepad.axes[2];
             const padY = gamepad.axes[1] !== 0 ? gamepad.axes[1] : gamepad.axes[3];
@@ -854,6 +862,7 @@ function animate(timestamp, frame, referenceSpace) {
               lastPressed,
               pointer,
               grip,
+              lastGrip,
               pad,
               padX,
               padY,
@@ -899,10 +908,12 @@ function animate(timestamp, frame, referenceSpace) {
         cameraDolly.updateMatrixWorld(true);
       };
 
+      const wasLastGripped = lastGrips[0] && lastGrips[1];
+
       const lg = _getGamepad(1);
       let li = -1;
       if (lg) {
-        const {position, quaternion, pressed, lastPressed, pointer, grip, pad, padX, padY} = lg;
+        const {position, quaternion, pressed, lastPressed, pointer, grip, lastGrip, pad, padX, padY} = lg;
         rig.inputs.leftGamepad.quaternion.copy(quaternion);
         rig.inputs.leftGamepad.position.copy(position);
         rig.inputs.leftGamepad.pointer = pointer;
@@ -919,11 +930,13 @@ function animate(timestamp, frame, referenceSpace) {
 
         lastPresseds[0] = pressed;
         lastPads[0] = pad;
+        lastGrips[0] = grip;
+        lastPositions[0].copy(position);
       }
       const rg = _getGamepad(0);
       let ri = -1;
       if (rg) {
-        const {position, quaternion, pressed, lastPressed, pointer, grip, pad, padX, padY} = rg;
+        const {position, quaternion, pressed, lastPressed, pointer, grip, lastGrip, pad, padX, padY} = rg;
         rig.inputs.rightGamepad.quaternion.copy(quaternion);
         rig.inputs.rightGamepad.position.copy(position);
         rig.inputs.rightGamepad.pointer = pointer;
@@ -940,6 +953,38 @@ function animate(timestamp, frame, referenceSpace) {
 
         lastPresseds[1] = pressed;
         lastPads[1] = pad;
+        lastGrips[1] = grip;
+        lastPositions[1].copy(position);
+      }
+
+      const _startScale = () => {
+        for (let i = 0; i < startGripPositions.length; i++) {
+          startGripPositions[i].copy(lastPositions[i]);
+        }
+        startSceneMatrix.copy(scene.matrix);
+      };
+      const _processScale = () => {
+        const startDistance = startGripPositions[0].distanceTo(startGripPositions[1]);
+        const currentDistance = lastPositions[0].distanceTo(lastPositions[1]);
+        const scaleFactor = startDistance / currentDistance;
+
+        const startGripPosition = localVector.copy(startGripPositions[0]).add(startGripPositions[1]).divideScalar(2);
+        const currentGripPosition = localVector2.copy(lastPositions[0]).add(lastPositions[1]).divideScalar(2);
+        const positionDiff = localVector3.copy(currentGripPosition).sub(startGripPosition);
+
+        scene.matrix.getInverse(startSceneMatrix)
+          .multiply(localMatrix.makeTranslation(-positionDiff.x, -positionDiff.y, -positionDiff.z))
+          .multiply(localMatrix.makeTranslation(currentGripPosition.x, currentGripPosition.y, currentGripPosition.z))
+          .multiply(localMatrix.makeScale(scaleFactor, scaleFactor, scaleFactor))
+          .multiply(localMatrix.makeTranslation(-currentGripPosition.x, -currentGripPosition.y, -currentGripPosition.z))
+          .getInverse(scene.matrix)
+          .decompose(scene.position, scene.quaternion, scene.scale);
+      };
+      const isLastGripped = lastGrips[0] && lastGrips[1];
+      if (!wasLastGripped && isLastGripped) {
+        _startScale();
+      } else if (isLastGripped) {
+        _processScale();
       }
 
       for (let i = 0; i < mirrorMesh.buttonMeshes.length; i++) {
