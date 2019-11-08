@@ -677,7 +677,9 @@ const colors = {
   highlight: 0x303f9f,
 };
 const mirrorMesh = (() => {
-  const geometry = new THREE.PlaneBufferGeometry(1, 2)
+  const mirrorWidth = 3;
+  const mirrorHeight = 2;
+  const geometry = new THREE.PlaneBufferGeometry(mirrorWidth, mirrorHeight)
     .applyMatrix(new THREE.Matrix4().makeTranslation(0, 1, 0));
   const mesh = new THREE.Reflector(geometry, {
     clipBias: 0.003,
@@ -690,13 +692,22 @@ const mirrorMesh = (() => {
   });
   mesh.position.set(0, 0, -1);
 
+  const borderMesh = new THREE.Mesh(
+    new THREE.BoxBufferGeometry(mirrorWidth + 0.1, mirrorHeight + 0.1, 0.1)
+      .applyMatrix(new THREE.Matrix4().makeTranslation(0, 1, -0.1/2 - 0.01)),
+    new THREE.MeshPhongMaterial({
+      color: 0x5c6bc0,
+    })
+  );
+  mesh.add(borderMesh);
+
   const buttonMeshes = aAvatars.map((aAvatar, i) => {
     const geometry = buttonGeometry;
     const material = new THREE.MeshPhongMaterial({
       color: colors.normal,
     });
     const mesh = new THREE.Mesh(geometry, material);
-    mesh.position.set(-1, 2 - 0.1/2 - i*0.1, 0);
+    mesh.position.set(-2, 2 - 0.1/2 - i*0.1, 0);
     mesh.frustumCulled = false;
 
     fontPromise.then(() => {
