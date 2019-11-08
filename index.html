@@ -147,7 +147,7 @@ a:active {
 .button {
   display: inline-flex;
   margin-right: 5px;
-  padding: 7px 15px;
+  padding: 7px 14px;
   border: 2px solid;
   border-radius: 100px;
   color: #5c6bc0;
@@ -212,7 +212,7 @@ a:active {
 input[type=text] {
   width: 160px;
   margin: 0 20px;
-  padding: 7px 15px;
+  padding: 7px 14px;
   background-color: #f2f3f5;
   border: 0;
   border-radius: 8px;
@@ -227,7 +227,7 @@ input[type=email],
 input[type=text]
 {
   margin-right: 10px;
-  padding: 7px 15px;
+  padding: 7px 14px;
   background-color: #f2f3f5;
   border: 0;
   border-radius: 8px;
@@ -382,6 +382,10 @@ header > .login-form.phase-3 > .phaseless-content
         </div>
         <div class=multibutton>
           <nav class="button first last" id=export-model-button>Export model</nav>
+        </div>
+        <div class=multibutton>
+          <nav class="button first" id=scale-down-button>Scale -</nav>
+          <nav class="button last" id=scale-up-button>Scale +</nav>
         </div>
         <h3>Multiplayer</h3>
         <input type=text value="avaer/yatis" placeholder="user/channel" id=channel-input>
@@ -802,6 +806,7 @@ const lastPads = [false, false];
 const lastPositions = [new THREE.Vector3(), new THREE.Vector3()];
 const startGripPositions = [new THREE.Vector3(), new THREE.Vector3()];
 const startSceneMatrix = new THREE.Matrix4();
+let startModelScale = 1;
 const dateOffset = Math.floor(Math.random() * 60 * 1000);
 const realDateNow = (now => () => dateOffset + now())(Date.now);
 function animate(timestamp, frame, referenceSpace) {
@@ -812,7 +817,7 @@ function animate(timestamp, frame, referenceSpace) {
       const {inputSources} = session;
       const gamepads = navigator.getGamepads();
 
-      rig.inputs.hmd.position.copy(vrCamera.position).applyMatrix4(new THREE.Matrix4().getInverse(scene.matrixWorld));
+      rig.inputs.hmd.position.copy(vrCamera.position).sub(scene.position).multiplyScalar(heightFactor);
       rig.inputs.hmd.quaternion.copy(vrCamera.quaternion);
 
       const _getGamepad = i => {
@@ -824,7 +829,7 @@ function animate(timestamp, frame, referenceSpace) {
           const {position, orientation, matrix} = transform;
           if (position) { // new WebXR api
             const rawP = localVector.copy(position);
-            const p = localVector2.copy(rawP).applyMatrix4(new THREE.Matrix4().getInverse(scene.matrixWorld));
+            const p = localVector2.copy(rawP).sub(scene.position).multiplyScalar(heightFactor);
             const q = localQuaternion.copy(orientation);
             const pressed = gamepad.buttons[0].pressed;
             const lastPressed = lastPresseds[i];
@@ -855,7 +860,7 @@ function animate(timestamp, frame, referenceSpace) {
             localMatrix
               .fromArray(transform.matrix)
               .decompose(rawP, q, s);
-            p.copy(rawP).applyMatrix4(new THREE.Matrix4().getInverse(scene.matrixWorld));
+            p.copy(rawP).sub(scene.position).multiplyScalar(heightFactor);
             const pressed = gamepad.buttons[0].pressed;
             const lastPressed = lastPresseds[i];
             const pointer = gamepad.buttons[0].value;
@@ -973,6 +978,7 @@ function animate(timestamp, frame, referenceSpace) {
           startGripPositions[i].copy(lastPositions[i]);
         }
         startSceneMatrix.copy(scene.matrix);
+        startModelScale = rig ? rig.inputs.hmd.scaleFactor : 1;
       };
       const _processScale = () => {
         const startDistance = startGripPositions[0].distanceTo(startGripPositions[1]);
@@ -980,9 +986,11 @@ function animate(timestamp, frame, referenceSpace) {
         const scaleFactor = currentDistance / startDistance;
 
         let startGripPosition = localVector3.copy(startGripPositions[0]).add(startGripPositions[1]).divideScalar(2)
-          .divideScalar(heightFactor);
+          /* .divideScalar(heightFactor)
+          .add(scene.position); */
         let currentGripPosition = localVector4.copy(lastPositions[0]).add(lastPositions[1]).divideScalar(2)
-          .divideScalar(heightFactor);
+          /* .divideScalar(heightFactor)
+          .add(scene.position); */
         startGripPosition.applyMatrix4(localMatrix.getInverse(startSceneMatrix));
         currentGripPosition.applyMatrix4(localMatrix/*.getInverse(startSceneMatrix)*/);
 
@@ -994,6 +1002,10 @@ function animate(timestamp, frame, referenceSpace) {
           .multiply(localMatrix.makeTranslation(-currentGripPosition.x, -currentGripPosition.y, -currentGripPosition.z))
           .multiply(localMatrix.makeTranslation(positionDiff.x, positionDiff.y, positionDiff.z))
           .decompose(scene.position, scene.quaternion, scene.scale);
+
+        if (rig) {
+          rig.inputs.hmd.scaleFactor = startModelScale / scaleFactor;
+        }
 
         // _startScale();
       };
@@ -1218,6 +1230,7 @@ connectButton.addEventListener('click', () => {
             const hmd = {
               position: localVector.copy(rig.inputs.hmd.position).divideScalar(heightFactor).toArray(),
               quaternion: rig.inputs.hmd.quaternion.toArray(),
+              scaleFactor: rig.inputs.hmd.scaleFactor,
             };
             const gamepads = [
               {
@@ -1261,6 +1274,7 @@ connectButton.addEventListener('click', () => {
 
           rig.starts.hmd.position.copy(peerConnection.rig.inputs.hmd.position);
           rig.starts.hmd.rotation.copy(peerConnection.rig.inputs.hmd.quaternion);
+          rig.starts.hmd.scaleFactor = peerConnection.rig.inputs.hmd.scaleFactor;
           rig.starts.gamepads[0].position.copy(peerConnection.rig.inputs.leftGamepad.position);
           rig.starts.gamepads[0].rotation.copy(peerConnection.rig.inputs.leftGamepad.quaternion);
           rig.starts.gamepads[0].pointer = peerConnection.rig.inputs.leftGamepad.pointer;
@@ -1272,6 +1286,7 @@ connectButton.addEventListener('click', () => {
 
           rig.targets.hmd.position.fromArray(hmd.position);
           rig.targets.hmd.rotation.fromArray(hmd.quaternion);
+          rig.targets.hmd.scaleFactor = hmd.scaleFactor;
           rig.targets.gamepads[0].position.fromArray(gamepads[0].position);
           rig.targets.gamepads[0].rotation.fromArray(gamepads[0].quaternion);
           rig.targets.gamepads[0].pointer = gamepads[0].pointer;
@@ -1318,6 +1333,7 @@ connectButton.addEventListener('click', () => {
             hmd: {
               position: peerConnection.rig.inputs.hmd.position.clone(),
               rotation: peerConnection.rig.inputs.hmd.quaternion.clone(),
+              scaleFactor: peerConnection.rig.inputs.hmd.scaleFactor,
             },
             gamepads: [
               {
@@ -1338,6 +1354,7 @@ connectButton.addEventListener('click', () => {
             hmd: {
               position: new THREE.Vector3(),
               rotation: new THREE.Quaternion(),
+              scaleFactor: 1,
             },
             gamepads: [
               {
@@ -1366,6 +1383,7 @@ connectButton.addEventListener('click', () => {
               localVector.copy(peerConnection.rig.targets.hmd.position).multiplyScalar(heightFactor),
               lerpFactor
             );
+            peerConnection.rig.inputs.hmd.scaleFactor = peerConnection.rig.starts.hmd.scaleFactor * (1-lerpFactor) + peerConnection.rig.targets.hmd.scaleFactor * lerpFactor;
 
             peerConnection.rig.inputs.leftGamepad.position.copy(peerConnection.rig.starts.gamepads[0].position).lerp(
               localVector.copy(peerConnection.rig.targets.gamepads[0].position).multiplyScalar(heightFactor),
@@ -1560,6 +1578,19 @@ exportModelButton.addEventListener('click', async () => {
 
   document.body.removeChild(a);
   URL.revokeObjectURL(u);
+});
+
+const scaleDownButton = document.getElementById('scale-down-button');
+scaleDownButton.addEventListener('click', () => {
+  if (rig) {
+    rig.inputs.hmd.scaleFactor /= 1.25;
+  }
+});
+const scaleUpButton = document.getElementById('scale-up-button');
+scaleUpButton.addEventListener('click', () => {
+  if (rig) {
+    rig.inputs.hmd.scaleFactor *= 1.25;
+  }
 });
 
 (async () => {
