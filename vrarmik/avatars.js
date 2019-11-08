@@ -972,5 +972,9 @@ class Avatar {
       this.decapitated = false;
     }
   }
+
+  destroy() {
+    this.setMicrophoneMediaStream(null);
+  }
 }
 export default Avatar;
