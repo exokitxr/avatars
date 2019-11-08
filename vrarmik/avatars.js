@@ -61,7 +61,7 @@ const _copySkeleton = (src, dst) => {
 class Avatar {
 	constructor(object, options = {}) {
     const model = object.isMesh ? object : object.scene;
-    // this.model = typeof model;
+    this.model = model;
     this.options = options;
 
     model.updateMatrixWorld(true);
@@ -655,7 +655,6 @@ class Avatar {
       }
     }
 
-	  const _getOffset = (bone, parent = bone.parent) => bone.getWorldPosition(new THREE.Vector3()).sub(parent.getWorldPosition(new THREE.Vector3()));
 	  const _averagePoint = points => {
       const result = new THREE.Vector3();
       for (let i = 0; i < points.length; i++) {
@@ -665,61 +664,37 @@ class Avatar {
       return result;
 	  };
     const eyePosition = _getEyePosition();
-	  const setups = {
-	    spine: _getOffset(modelBones.Spine),
-	    chest: _getOffset(modelBones.Chest, modelBones.Spine),
-	    neck: _getOffset(modelBones.Neck),
-	    head: _getOffset(modelBones.Head),
-	    eyes: eyePosition.clone().sub(Head.getWorldPosition(new THREE.Vector3())),
-
-	    leftShoulder: _getOffset(modelBones.Right_shoulder),
-	    leftUpperArm: _getOffset(modelBones.Right_arm),
-	    leftLowerArm: _getOffset(modelBones.Right_elbow),
-	    leftHand: _getOffset(modelBones.Right_wrist),
-
-	    rightShoulder: _getOffset(modelBones.Left_shoulder),
-	    rightUpperArm: _getOffset(modelBones.Left_arm),
-	    rightLowerArm: _getOffset(modelBones.Left_elbow),
-	    rightHand: _getOffset(modelBones.Left_wrist),
-
-	    leftUpperLeg: _getOffset(modelBones.Right_leg),
-	    leftLowerLeg: _getOffset(modelBones.Right_knee),
-	    leftFoot: _getOffset(modelBones.Right_ankle),
-
-	    rightUpperLeg: _getOffset(modelBones.Left_leg),
-	    rightLowerLeg: _getOffset(modelBones.Left_knee),
-	    rightFoot: _getOffset(modelBones.Left_ankle),
-	  };
 
 		this.poseManager = new PoseManager(this);
 		this.shoulderTransforms = new ShoulderTransforms(this);
 		this.legsManager = new LegsManager(this);
 
-    this.shoulderTransforms.spine.position.copy(setups.spine);
-    this.shoulderTransforms.transform.position.copy(setups.chest);
-    this.shoulderTransforms.neck.position.copy(setups.neck);
-    this.shoulderTransforms.head.position.copy(setups.head);
-    this.shoulderTransforms.eyes.position.copy(setups.eyes);
+    const _getOffset = (bone, parent = bone.parent) => bone.getWorldPosition(new THREE.Vector3()).sub(parent.getWorldPosition(new THREE.Vector3()));
+    this.initializeBonePositions({
+      spine: _getOffset(modelBones.Spine),
+      chest: _getOffset(modelBones.Chest, modelBones.Spine),
+      neck: _getOffset(modelBones.Neck),
+      head: _getOffset(modelBones.Head),
+      eyes: eyePosition.clone().sub(Head.getWorldPosition(new THREE.Vector3())),
 
-    this.shoulderTransforms.leftShoulderAnchor.position.copy(setups.leftShoulder);
-    this.shoulderTransforms.leftArm.upperArm.position.copy(setups.leftUpperArm);
-    this.shoulderTransforms.leftArm.lowerArm.position.copy(setups.leftLowerArm);
-    this.shoulderTransforms.leftArm.hand.position.copy(setups.leftHand);
+      leftShoulder: _getOffset(modelBones.Right_shoulder),
+      leftUpperArm: _getOffset(modelBones.Right_arm),
+      leftLowerArm: _getOffset(modelBones.Right_elbow),
+      leftHand: _getOffset(modelBones.Right_wrist),
 
-    this.shoulderTransforms.rightShoulderAnchor.position.copy(setups.rightShoulder);
-    this.shoulderTransforms.rightArm.upperArm.position.copy(setups.rightUpperArm);
-    this.shoulderTransforms.rightArm.lowerArm.position.copy(setups.rightLowerArm);
-    this.shoulderTransforms.rightArm.hand.position.copy(setups.rightHand);
+      rightShoulder: _getOffset(modelBones.Left_shoulder),
+      rightUpperArm: _getOffset(modelBones.Left_arm),
+      rightLowerArm: _getOffset(modelBones.Left_elbow),
+      rightHand: _getOffset(modelBones.Left_wrist),
 
-    this.legsManager.leftLeg.upperLeg.position.copy(setups.leftUpperLeg);
-    this.legsManager.leftLeg.lowerLeg.position.copy(setups.leftLowerLeg);
-    this.legsManager.leftLeg.foot.position.copy(setups.leftFoot);
+      leftUpperLeg: _getOffset(modelBones.Right_leg),
+      leftLowerLeg: _getOffset(modelBones.Right_knee),
+      leftFoot: _getOffset(modelBones.Right_ankle),
 
-    this.legsManager.rightLeg.upperLeg.position.copy(setups.rightUpperLeg);
-    this.legsManager.rightLeg.lowerLeg.position.copy(setups.rightLowerLeg);
-    this.legsManager.rightLeg.foot.position.copy(setups.rightFoot);
-
-    this.shoulderTransforms.hips.updateMatrixWorld();
+      rightUpperLeg: _getOffset(modelBones.Left_leg),
+      rightLowerLeg: _getOffset(modelBones.Left_knee),
+      rightFoot: _getOffset(modelBones.Left_ankle),
+    });
 
     this.height = eyePosition.sub(_averagePoint([modelBones.Left_ankle.getWorldPosition(new THREE.Vector3()), modelBones.Right_ankle.getWorldPosition(new THREE.Vector3())])).y;
     this.shoulderWidth = modelBones.Left_arm.getWorldPosition(new THREE.Vector3()).distanceTo(modelBones.Right_arm.getWorldPosition(new THREE.Vector3()));
@@ -731,6 +706,8 @@ class Avatar {
 			leftGamepad: this.poseManager.vrTransforms.leftHand,
 			rightGamepad: this.poseManager.vrTransforms.rightHand,
 		};
+    this.inputs.hmd.scaleFactor = 1;
+    this.lastModelScaleFactor = 1;
 		this.outputs = {
 			eyes: this.shoulderTransforms.eyes,
       head: this.shoulderTransforms.head,
@@ -793,8 +770,55 @@ class Avatar {
       this.decapitate();
     }
 	}
+  initializeBonePositions(setups) {
+    this.shoulderTransforms.spine.position.copy(setups.spine);
+    this.shoulderTransforms.transform.position.copy(setups.chest);
+    this.shoulderTransforms.neck.position.copy(setups.neck);
+    this.shoulderTransforms.head.position.copy(setups.head);
+    this.shoulderTransforms.eyes.position.copy(setups.eyes);
+
+    this.shoulderTransforms.leftShoulderAnchor.position.copy(setups.leftShoulder);
+    this.shoulderTransforms.leftArm.upperArm.position.copy(setups.leftUpperArm);
+    this.shoulderTransforms.leftArm.lowerArm.position.copy(setups.leftLowerArm);
+    this.shoulderTransforms.leftArm.hand.position.copy(setups.leftHand);
+
+    this.shoulderTransforms.rightShoulderAnchor.position.copy(setups.rightShoulder);
+    this.shoulderTransforms.rightArm.upperArm.position.copy(setups.rightUpperArm);
+    this.shoulderTransforms.rightArm.lowerArm.position.copy(setups.rightLowerArm);
+    this.shoulderTransforms.rightArm.hand.position.copy(setups.rightHand);
+
+    this.legsManager.leftLeg.upperLeg.position.copy(setups.leftUpperLeg);
+    this.legsManager.leftLeg.lowerLeg.position.copy(setups.leftLowerLeg);
+    this.legsManager.leftLeg.foot.position.copy(setups.leftFoot);
+
+    this.legsManager.rightLeg.upperLeg.position.copy(setups.rightUpperLeg);
+    this.legsManager.rightLeg.lowerLeg.position.copy(setups.rightLowerLeg);
+    this.legsManager.rightLeg.foot.position.copy(setups.rightFoot);
+
+    this.shoulderTransforms.hips.updateMatrixWorld();
+  }
 	update() {
 // return;
+
+   const wasDecapitated = this.decapitated;
+   if (this.springBoneManager && wasDecapitated) {
+    this.undecapitate();
+   }
+
+    const modelScaleFactor = this.inputs.hmd.scaleFactor;
+    if (modelScaleFactor !== this.lastModelScaleFactor) {
+      this.model.scale.set(modelScaleFactor, modelScaleFactor, modelScaleFactor);
+      this.lastModelScaleFactor = modelScaleFactor;
+
+      this.springBoneManager && this.springBoneManager.springBoneGroupList.forEach(springBoneGroup => {
+        springBoneGroup.forEach(springBone => {
+          springBone._worldBoneLength = springBone.bone
+            .localToWorld(localVector.copy(springBone._initialLocalChildPosition))
+            .sub(springBone._worldPosition)
+            .length();
+        });
+      });
+    }
 
     this.shoulderTransforms.Update();
     this.legsManager.Update();
@@ -849,14 +873,10 @@ class Avatar {
     }
 
     if (this.springBoneManager) {
-      const wasDecapitated = this.decapitated;
-      if (wasDecapitated) {
-        this.undecapitate();
-      }
       this.springBoneManager.lateUpdate(timeDiff / 1000);
-      if (wasDecapitated) {
-        this.decapitate();
-      }
+    }
+    if (this.springBoneManager && wasDecapitated) {
+      this.decapitate();
     }
 
     if (this.options.visemes) {
