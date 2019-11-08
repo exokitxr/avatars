@@ -772,6 +772,7 @@ let heightFactor = 0;
 const _setLocalModel = newModel => {
   if (rig) {
     meshDolly.remove(model.scene);
+    rig.destroy();
     rig = null;
     model = null;
   }
@@ -790,13 +791,13 @@ const _setLocalModel = newModel => {
   heightFactor = _getHeightFactor(rig.height);
 
   scene.scale.set(1, 1, 1);
-  mirrorMesh.position.z = -heightFactor;
+  /* mirrorMesh.position.z = -heightFactor;
   mirrorMesh.scale.set(1, 1, 1).multiplyScalar(heightFactor);
   for (let i = 0; i < teleportMeshes.length; i++) {
     teleportMeshes[i].scale.set(1, 1, 1).multiplyScalar(heightFactor);
   }
   scene.updateMatrixWorld();
-  mirrorMesh.update();
+  mirrorMesh.update(); */
   scene.scale.divideScalar(heightFactor);
 };
 
@@ -1317,6 +1318,7 @@ connectButton.addEventListener('click', () => {
 
           if (peerConnection.model) {
             scene.remove(peerConnection.model.scene);
+            peerConnection.rig.destroy();
           }
 
           peerConnection.model = await _loadModelUrl(url);
@@ -1582,14 +1584,32 @@ exportModelButton.addEventListener('click', async () => {
 
 const scaleDownButton = document.getElementById('scale-down-button');
 scaleDownButton.addEventListener('click', () => {
+  const scaleFactor = 1.25;
+
+  const orbitControlsTarget = localVector.copy(orbitControls.target);
+  scene.matrix.copy(scene.matrix)
+    .multiply(localMatrix.makeTranslation(orbitControlsTarget.x, orbitControlsTarget.y, orbitControlsTarget.z))
+    .multiply(localMatrix.makeScale(scaleFactor, scaleFactor, scaleFactor))
+    .multiply(localMatrix.makeTranslation(-orbitControlsTarget.x, -orbitControlsTarget.y, -orbitControlsTarget.z))
+    .decompose(scene.position, scene.quaternion, scene.scale);
+
   if (rig) {
-    rig.inputs.hmd.scaleFactor /= 1.25;
+    rig.inputs.hmd.scaleFactor /= scaleFactor;
   }
 });
 const scaleUpButton = document.getElementById('scale-up-button');
 scaleUpButton.addEventListener('click', () => {
+  const scaleFactor = 1/1.25;
+
+  const orbitControlsTarget = localVector.copy(orbitControls.target);
+  scene.matrix.copy(scene.matrix)
+    .multiply(localMatrix.makeTranslation(orbitControlsTarget.x, orbitControlsTarget.y, orbitControlsTarget.z))
+    .multiply(localMatrix.makeScale(scaleFactor, scaleFactor, scaleFactor))
+    .multiply(localMatrix.makeTranslation(-orbitControlsTarget.x, -orbitControlsTarget.y, -orbitControlsTarget.z))
+    .decompose(scene.position, scene.quaternion, scene.scale);
+
   if (rig) {
-    rig.inputs.hmd.scaleFactor *= 1.25;
+    rig.inputs.hmd.scaleFactor /= scaleFactor;
   }
 });
 
