@@ -77,8 +77,8 @@ class ShoulderPoser
 
 		Update()
 		{
-      this.shoulder.prone = this.isProne();
       this.shoulder.proneFactor = this.getProneFactor();
+      this.shoulder.prone = this.shoulder.proneFactor > 0;
       if (this.shoulder.prone) {
         this.shoulder.lastProneTimestamp = Date.now();
       } else {
@@ -357,10 +357,6 @@ class ShoulderPoser
 
 		getProneFactor() {
       return 1 - Math.min(Math.max((this.vrTransforms.head.position.y - this.rig.height*0.3)/(this.rig.height*0.3), 0), 1);
-		}
-
-		isProne() {
-			return this.getProneFactor() > 0;
 		}
 
 		/* detectHandsBehindHead(targetRotation)
