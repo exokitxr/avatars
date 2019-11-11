@@ -260,7 +260,7 @@ class ShoulderPoser
 
 		rotateShoulderBase()
 		{
-			let angleY = this.getCombinedDirectionAngleUp();
+			const angleY = this.getCombinedDirectionAngleUp();
 
 			// const targetRotation = new Vector3(0, angle, 0);
 
@@ -274,15 +274,19 @@ class ShoulderPoser
 				// angleY = this.clampHeadRotationDeltaUp(angleY);
 			// }
 
-			this.shoulder.transform.quaternion.setFromEuler(localEuler.set(0, angleY, 0, 'YXZ'));
-			this.shoulder.transform.quaternion.multiply(localQuaternion3.setFromAxisAngle(rightVector, this.shoulder.proneFactor * Math.PI/2));
+			this.shoulder.transform.quaternion.setFromEuler(localEuler.set(0, angleY, 0, 'YXZ'))
+			  .premultiply(
+			  	localQuaternion.copy(this.shoulder.hips.quaternion)
+			      .multiply(z180Quaternion)
+			  );
+			/* this.shoulder.transform.quaternion.multiply(localQuaternion3.setFromAxisAngle(rightVector, this.shoulder.proneFactor * Math.PI/2));
 			if (!this.rig.legsManager.leftLeg.standing && !this.rig.legsManager.rightLeg.standing) {
         const jumpFactor = 1-Math.min(this.rig.legsManager.leftLeg.standFactor, this.rig.legsManager.rightLeg.standFactor);
         this.shoulder.transform.quaternion.multiply(localQuaternion3.setFromAxisAngle(rightVector, jumpFactor * Math.PI/4));
       } else {
       	const standFactor = Math.min(this.rig.legsManager.leftLeg.standFactor, this.rig.legsManager.rightLeg.standFactor);
       	this.shoulder.transform.quaternion.multiply(localQuaternion3.setFromAxisAngle(rightVector, (1-standFactor) * Math.PI/4));
-      }
+      } */
       this.shoulder.transform.quaternion
 			  .premultiply(Helpers.getWorldQuaternion(this.shoulder.transform.parent, localQuaternion).inverse());
 			Helpers.updateMatrixMatrixWorld(this.shoulder.transform);
@@ -324,18 +328,19 @@ class ShoulderPoser
 
 		getCombinedDirectionAngleUp()
 		{
-			const hmdRotation = localQuaternion.copy(this.vrTransforms.head.quaternion);
-			const hmdRotationInverse = localQuaternion2.copy(this.vrTransforms.head.quaternion)
+			const hipsRotation = localQuaternion.copy(this.shoulder.hips.quaternion)
+        .multiply(z180Quaternion);
+			const hipsRotationInverse = localQuaternion2.copy(hipsRotation)
 			  .inverse();
 
 			const distanceLeftHand = localVector.copy(this.vrTransforms.leftHand.position)
 			  .add(localVector2.set(0, 0, wristToHandDistance).applyQuaternion(this.vrTransforms.leftHand.quaternion))
-			  .sub(Helpers.getWorldPosition(this.shoulder.transform, localVector2))
-			  .applyQuaternion(hmdRotationInverse);
+			  .sub(this.vrTransforms.head.position)
+			  .applyQuaternion(hipsRotationInverse);
 			const distanceRightHand = localVector2.copy(this.vrTransforms.rightHand.position)
 		  	.add(localVector3.set(0, 0, wristToHandDistance).applyQuaternion(this.vrTransforms.rightHand.quaternion))
-			  .sub(Helpers.getWorldPosition(this.shoulder.transform, localVector3))
-			  .applyQuaternion(hmdRotationInverse);
+			  .sub(this.vrTransforms.head.position)
+			  .applyQuaternion(hipsRotationInverse);
 
 			distanceLeftHand.y = 0;
 			distanceRightHand.y = 0;
@@ -350,9 +355,7 @@ class ShoulderPoser
 			}
 
 			const combinedDirection = localVector.addVectors(distanceLeftHand.normalize(), distanceRightHand.normalize());
-
-			const headUpRotation = (localEuler.setFromQuaternion(hmdRotation, 'YXZ').y + Math.PI*2) % (Math.PI*2);
-			return Math.atan2(combinedDirection.x, combinedDirection.z) + headUpRotation;
+			return Math.atan2(combinedDirection.x, combinedDirection.z);
 		}
 
 		getProneFactor() {
