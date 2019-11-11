@@ -1026,8 +1026,8 @@ function animate(timestamp, frame, referenceSpace) {
     } else if (controlsBound) {
       localEuler.setFromQuaternion(rig.inputs.hmd.quaternion, 'YXZ');
       localEuler.x = Math.min(Math.max(localEuler.x - mouse.movementY * 0.01, -Math.PI/2), Math.PI/2);
-      // console.log('got euler', localEuler.x);
       localEuler.y -= mouse.movementX * 0.01
+      localEuler.z = 0;
       rig.inputs.hmd.quaternion.setFromEuler(localEuler);
       mouse.movementX = 0;
       mouse.movementY = 0;
