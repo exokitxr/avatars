@@ -153,10 +153,6 @@ class Leg {
 			(Helpers.getWorldPosition(this.legsManager.rig.shoulderTransforms.eyes, localVector).add(this.eyesToUpperLegOffset).y - this.legLength) / (this.legsManager.rig.height*0.2),
 		0), 1), 0.7);
 	}
-
-	isStanding() {
-		return this.getStandFactor() >= 1;
-	}
 }
 
 class LegsManager {
@@ -203,8 +199,8 @@ class LegsManager {
 		this.lastHmdPosition.copy(this.poseManager.vrTransforms.head.position);
 		// console.log('v', this.hmdVelocity.toArray().join(','));
 
-	  this.leftLeg.standing = this.leftLeg.isStanding();
-	  this.leftLeg.standFactor = this.leftLeg.getStandFactor();
+    this.leftLeg.standFactor = this.leftLeg.getStandFactor();
+	  this.leftLeg.standing = this.leftLeg.standFactor >= 1;
 	  if (this.leftLeg.standing) {
 	  	this.leftLeg.lastStandTimestamp = now;
 	  } else {
@@ -213,8 +209,8 @@ class LegsManager {
 	  if (this.leftLeg.stepping && !this.leftLeg.standing) {
       this.leftLeg.stepping = false;
 	  }
-	  this.rightLeg.standing = this.rightLeg.isStanding();
 	  this.rightLeg.standFactor = this.rightLeg.getStandFactor();
+	  this.rightLeg.standing = this.rightLeg.standFactor >= 1;
 	  if (this.rightLeg.standing) {
 	  	this.rightLeg.lastStandTimestamp = now;
 	  } else {
