@@ -399,6 +399,8 @@ header > .login-form.phase-3 > .phaseless-content
       <div class=multibutton>
         <a class="button first" id="enable-mic-button" style="display: none;">Enable Mic</a>
         <a class="button first" id="disable-mic-button" disabled style="display: none;">Disable Mic</a>
+        <a class="button" id="firstperson-button">Firstperson</a>
+        <a class="button" id="thirdperson-button">Thirdperson</a>
         <a class="button last" id="enter-xr-button" style="display: none;">Enter XR</a>
         <a class="button last" id="no-xr-button" disabled style="display: none;">No XR</a>
       </div>
@@ -411,6 +413,7 @@ import Avatar from './vrarmik/avatars.js';
 import {XRChannelConnection} from 'https://multiplayer.exokit.org/multiplayer.js';
 
 const peerPoseUpdateRate = 50;
+const walkSpeed = 0.03;
 const floorPlane = new THREE.Plane().setFromNormalAndCoplanarPoint(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 0));
 
 const localVector = new THREE.Vector3();
@@ -921,7 +924,7 @@ function animate(timestamp, frame, referenceSpace) {
           const hmdEuler = localEuler.setFromQuaternion(rig.inputs.hmd.quaternion, 'YXZ');
           localEuler.x = 0;
           localEuler.z = 0;
-          scene.position.sub(localVector.set(padX, 0, padY).applyEuler(hmdEuler).multiplyScalar(0.03));
+          scene.position.sub(localVector.set(padX, 0, padY).applyEuler(hmdEuler).multiplyScalar(walkSpeed));
         }
       };
 
@@ -1020,6 +1023,69 @@ function animate(timestamp, frame, referenceSpace) {
       for (let i = 0; i < mirrorMesh.buttonMeshes.length; i++) {
         mirrorMesh.buttonMeshes[i].material.color.setHex((i === li || i === ri) ? colors.highlight : colors.normal);
       }
+    } else if (controlsBound) {
+      localEuler.setFromQuaternion(rig.inputs.hmd.quaternion, 'YXZ');
+      localEuler.x = Math.min(Math.max(localEuler.x - mouse.movementY * 0.01, -Math.PI/2), Math.PI/2);
+      // console.log('got euler', localEuler.x);
+      localEuler.y -= mouse.movementX * 0.01
+      rig.inputs.hmd.quaternion.setFromEuler(localEuler);
+      mouse.movementX = 0;
+      mouse.movementY = 0;
+
+      localEuler.setFromQuaternion(rig.inputs.hmd.quaternion, 'YXZ');
+      localEuler.x = 0;
+      localEuler.z = 0;
+      const floorRotation = localQuaternion.setFromEuler(localEuler);
+
+      if (keys.left) {
+        rig.inputs.hmd.position.add(localVector.set(-walkSpeed, 0, 0).applyQuaternion(floorRotation));
+      }
+      if (keys.right) {
+        rig.inputs.hmd.position.add(localVector.set(walkSpeed, 0, 0).applyQuaternion(floorRotation));
+      }
+      if (keys.up) {
+        rig.inputs.hmd.position.add(localVector.set(0, 0, -walkSpeed).applyQuaternion(floorRotation));
+      }
+      if (keys.down) {
+        rig.inputs.hmd.position.add(localVector.set(0, 0, walkSpeed).applyQuaternion(floorRotation));
+      }
+      const lerpFactor = 0.1;
+      if (keys.space) {
+        rig.inputs.hmd.position.y = rig.inputs.hmd.position.y * (1-lerpFactor) + rig.height*1.1 * lerpFactor;
+      } else if (keys.z) {
+        rig.inputs.hmd.position.y = rig.inputs.hmd.position.y * (1-lerpFactor) + rig.height*0.2 * lerpFactor;
+      } else {
+        const lerpFactor = 0.3;
+        rig.inputs.hmd.position.y = rig.inputs.hmd.position.y * (1-lerpFactor) + rig.height*0.9 * lerpFactor;
+      }
+
+      rig.inputs.leftGamepad.position.copy(rig.inputs.hmd.position)
+        .add(new THREE.Vector3(0.2, -0.2, -0.2).applyQuaternion(rig.inputs.hmd.quaternion));
+      rig.inputs.leftGamepad.quaternion.copy(rig.inputs.hmd.quaternion);
+      rig.inputs.rightGamepad.position.copy(rig.inputs.hmd.position)
+        .add(new THREE.Vector3(-0.2, -0.2, -0.2).applyQuaternion(rig.inputs.hmd.quaternion));
+      rig.inputs.rightGamepad.quaternion.copy(rig.inputs.hmd.quaternion);
+
+      if (controlsBound === 'firstperson') {
+        camera.position.copy(rig.inputs.hmd.position)
+          .multiply(scene.scale);
+        camera.quaternion.copy(rig.inputs.hmd.quaternion);
+        rig.decapitate();
+      } else if (controlsBound === 'thirdperson') {
+        camera.position.copy(rig.inputs.hmd.position)
+          .multiply(scene.scale)
+          .add(new THREE.Vector3(0, 1, 2).applyQuaternion(rig.inputs.hmd.quaternion));
+        camera.quaternion.setFromRotationMatrix(
+          new THREE.Matrix4().lookAt(
+            camera.position,
+            rig.inputs.hmd.position.clone().multiply(scene.scale),
+            new THREE.Vector3(0, 1, 0).applyQuaternion(rig.inputs.hmd.quaternion)
+          )
+        );
+        rig.undecapitate();
+      } else {
+        rig.undecapitate();
+      }
     } else {
       const positionOffset = Math.sin((realDateNow()%10000)/10000*Math.PI*2)*2;
       const positionOffset2 = -Math.sin((realDateNow()%5000)/5000*Math.PI*2)*1;
@@ -1083,6 +1149,118 @@ function animate(timestamp, frame, referenceSpace) {
   } */
 }
 renderer.setAnimationLoop(animate);
+
+const mouse = {
+  movementX: 0,
+  movementY: 0,
+};
+const keys = {
+  up: false,
+  down: false,
+  left: false,
+  right: false,
+  z: false,
+  space: false,
+};
+let controlsBound = null;
+let unbindControls = null;
+window.document.addEventListener('pointerlockchange', () => {
+  if (!window.document.pointerLockElement && unbindControls) {
+    unbindControls();
+    unbindControls = null;
+  }
+});
+
+const _bindControls = type => {
+  const _keydown = e => {
+    switch (e.which) {
+      case 65: {
+        keys.left = true;
+        break;
+      }
+      case 68: {
+        keys.right = true;
+        break;
+      }
+      case 87: {
+        keys.up = true;
+        break;
+      }
+      case 83: {
+        keys.down = true;
+        break;
+      }
+      case 90: {
+        keys.z = true;
+        break;
+      }
+      case 32: {
+        keys.space = true;
+        break;
+      }
+    }
+  };
+  window.addEventListener('keydown', _keydown);
+  const _keyup = e => {
+    switch (e.which) {
+      case 65: {
+        keys.left = false;
+        break;
+      }
+      case 68: {
+        keys.right = false;
+        break;
+      }
+      case 87: {
+        keys.up = false;
+        break;
+      }
+      case 83: {
+        keys.down = false;
+        break;
+      }
+      case 90: {
+        keys.z = false;
+        break;
+      }
+      case 32: {
+        keys.space = false;
+        break;
+      }
+    }
+  };
+  window.addEventListener('keyup', _keyup);
+  const _mousemove = e => {
+    mouse.movementX += e.movementX;
+    mouse.movementY += e.movementY;
+  };
+  window.addEventListener('mousemove', _mousemove);
+  orbitControls.enabled = false;
+  controlsBound = type;
+
+  unbindControls = () => {
+    window.addEventListener('keydown', _keydown);
+    window.addEventListener('keyup', _keyup);
+    window.removeEventListener('mousemove', _mousemove);
+    orbitControls.target.copy(camera.position).add(new THREE.Vector3(0, 0, -3).applyQuaternion(camera.quaternion));
+    orbitControls.enabled = true;
+    controlsBound = null;
+  };
+};
+const firstpersonButton = document.getElementById('firstperson-button');
+firstpersonButton.addEventListener('click', async () => {
+  if (rig) {
+    await renderer.domElement.requestPointerLock();
+    _bindControls('firstperson');
+  }
+});
+const thirdpersonButton = document.getElementById('thirdperson-button');
+thirdpersonButton.addEventListener('click', async () => {
+  if (rig) {
+    await renderer.domElement.requestPointerLock();
+    _bindControls('thirdperson');
+  }
+});
 
 let session = null;
 const enterXrButton = document.getElementById('enter-xr-button');
