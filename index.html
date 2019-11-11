@@ -1049,10 +1049,11 @@ function animate(timestamp, frame, referenceSpace) {
       if (keys.down) {
         rig.inputs.hmd.position.add(localVector.set(0, 0, walkSpeed).applyQuaternion(floorRotation));
       }
-      const lerpFactor = 0.1;
       if (keys.space) {
+        const lerpFactor = 0.3;
         rig.inputs.hmd.position.y = rig.inputs.hmd.position.y * (1-lerpFactor) + rig.height*1.1 * lerpFactor;
       } else if (keys.z) {
+        const lerpFactor = 0.05;
         rig.inputs.hmd.position.y = rig.inputs.hmd.position.y * (1-lerpFactor) + rig.height*0.2 * lerpFactor;
       } else {
         const lerpFactor = 0.3;

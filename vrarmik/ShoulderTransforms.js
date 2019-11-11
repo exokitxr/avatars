@@ -35,6 +35,12 @@ class ShoulderTransforms
 			this.leftShoulderAnchor.add(this.leftArm.transform);
 			this.rightShoulderAnchor.add(this.rightArm.transform);
 
+      this.prone = false;
+      this.proneFactor = 0;
+      const now = Date.now();
+      this.lastStandTimestamp = now;
+      this.lastProneTimestamp = now;
+
 			this.shoulderPoser = new ShoulderPoser(rig, this);
 
 			this.leftArmIk = new VRArmIK(this.leftArm, this, this.shoulderPoser, this.shoulderPoser.vrTransforms.leftHand, true);
