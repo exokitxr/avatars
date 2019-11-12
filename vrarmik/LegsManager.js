@@ -6,9 +6,9 @@ const stepMinDistance = 0;
 const stepMaxDistance = 0.25;
 const stepRestitutionDistance = 0.8;
 // const minStepDistanceTimeFactor = 0.2;
-const minHmdVelocityTimeFactor = 0.02;
+const minHmdVelocityTimeFactor = 0.015;
 // const velocityLearningFactor = 1;
-const maxVelocity = 0.02;
+const maxVelocity = 0.015;
 const velocityRestitutionFactor = 25;
 const crossStepFactor = 0.9;
 
@@ -300,7 +300,7 @@ class LegsManager {
 				  	  .distanceTo(leg.foot.startHmdFloorTransform.position),
 				  	minStepDistanceTimeFactor
 				  ) */
-				  * Math.max(localVector2.set(this.hmdVelocity.x, 0, this.hmdVelocity.z).length(), minHmdVelocityTimeFactor);
+				  * Math.max(localVector2.set(this.hmdVelocity.x, 0, this.hmdVelocity.z).length() / this.rig.height, minHmdVelocityTimeFactor);
 				return Math.min(Math.max(leg.stepFactor + scaledStepRate * timeDiff, 0), 1);
 	    } else {
 	    	return 0;
@@ -356,8 +356,8 @@ class LegsManager {
 				  .add(localVector6.set((leg.left ? -1 : 1) * footDistance, 0, 0).applyQuaternion(leg.foot.stickTransform.quaternion));
 				const velocityVector = localVector6.set(this.hmdVelocity.x, 0, this.hmdVelocity.z);
 				const velocityVectorLength = velocityVector.length();
-				if (velocityVectorLength > maxVelocity) {
-          velocityVector.multiplyScalar(maxVelocity / velocityVectorLength);
+				if (velocityVectorLength > maxVelocity*this.rig.height) {
+          velocityVector.multiplyScalar(maxVelocity*this.rig.height / velocityVectorLength);
 				}
 				velocityVector.multiplyScalar(velocityRestitutionFactor);
 				leg.foot.endTransform.position.add(velocityVector);
