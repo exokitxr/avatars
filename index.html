@@ -908,7 +908,7 @@ function animate(timestamp, frame, referenceSpace) {
           return null;
         }
       };
-      const _updateTeleportMesh = (i, pad, lastPad, position, quaternion, padX, padY) => {
+      const _updateTeleportMesh = (i, pad, lastPad, position, quaternion, padX, padY, stick) => {
         const teleportMesh = teleportMeshes[i];
         teleportMesh.visible = false;
 
@@ -944,7 +944,7 @@ function animate(timestamp, frame, referenceSpace) {
           const hmdEuler = localEuler.setFromQuaternion(rig.inputs.hmd.quaternion, 'YXZ');
           localEuler.x = 0;
           localEuler.z = 0;
-          scene.position.sub(localVector.multiplyScalar(walkSpeed * rig.height).applyEuler(hmdEuler));
+          scene.position.sub(localVector.multiplyScalar(walkSpeed * (stick ? 3 : 1) * rig.height).applyEuler(hmdEuler));
         }
       };
 
@@ -953,7 +953,7 @@ function animate(timestamp, frame, referenceSpace) {
       const lg = _getGamepad(1);
       let li = -1;
       if (lg) {
-        const {rawPosition, position, quaternion, pressed, lastPressed, pointer, grip, pad, padX, padY, b} = lg;
+        const {rawPosition, position, quaternion, pressed, lastPressed, pointer, grip, pad, b} = lg;
         rig.inputs.leftGamepad.quaternion.copy(quaternion);
         rig.inputs.leftGamepad.position.copy(position);
         rig.inputs.leftGamepad.pointer = pointer;
@@ -966,7 +966,7 @@ function animate(timestamp, frame, referenceSpace) {
           }
         }
 
-        _updateTeleportMesh(0, pad, lastPads[0], position, quaternion, 0, 0);
+        _updateTeleportMesh(0, pad, lastPads[0], position, quaternion, 0, 0, false);
 
         lastPresseds[0] = pressed;
         lastPads[0] = pad;
@@ -976,7 +976,7 @@ function animate(timestamp, frame, referenceSpace) {
       const rg = _getGamepad(0);
       let ri = -1;
       if (rg) {
-        const {rawPosition, position, quaternion, pressed, lastPressed, pointer, grip, pad, padX, padY, b} = rg;
+        const {rawPosition, position, quaternion, pressed, lastPressed, pointer, grip, pad, padX, padY, stick, b} = rg;
         rig.inputs.rightGamepad.quaternion.copy(quaternion);
         rig.inputs.rightGamepad.position.copy(position);
         rig.inputs.rightGamepad.pointer = pointer;
@@ -989,7 +989,7 @@ function animate(timestamp, frame, referenceSpace) {
           }
         }
 
-        _updateTeleportMesh(1, false, false, position, quaternion, padX, padY);
+        _updateTeleportMesh(1, false, false, position, quaternion, padX, padY, stick);
 
         lastPresseds[1] = pressed;
         lastPads[1] = pad;
@@ -1070,7 +1070,7 @@ function animate(timestamp, frame, referenceSpace) {
       if (keys.down) {
         localVector.z += 1;
       }
-      rig.inputs.hmd.position.add(localVector.normalize().multiplyScalar(walkSpeed * rig.height).applyQuaternion(floorRotation));
+      rig.inputs.hmd.position.add(localVector.normalize().multiplyScalar(walkSpeed * (keys.shift ? 3 : 1) * rig.height).applyQuaternion(floorRotation));
       if (keys.space) {
         const lerpFactor = 0.3;
         rig.inputs.hmd.position.y = rig.inputs.hmd.position.y * (1-lerpFactor) + rig.height*1.1 * lerpFactor;
@@ -1184,6 +1184,7 @@ const keys = {
   z: false,
   c: false,
   space: false,
+  shift: false,
 };
 let controlsBound = null;
 let unbindControls = null;
@@ -1225,6 +1226,10 @@ const _bindControls = type => {
         keys.space = true;
         break;
       }
+      case 16: {
+        keys.shift = true;
+        break;
+      }
     }
   };
   window.addEventListener('keydown', _keydown);
@@ -1256,6 +1261,10 @@ const _bindControls = type => {
       }
       case 32: {
         keys.space = false;
+        break;
+      }
+      case 16: {
+        keys.shift = false;
         break;
       }
     }
