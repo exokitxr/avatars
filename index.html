@@ -1064,6 +1064,9 @@ function animate(timestamp, frame, referenceSpace) {
       } else if (keys.z) {
         const lerpFactor = 0.05;
         rig.inputs.hmd.position.y = rig.inputs.hmd.position.y * (1-lerpFactor) + rig.height*0.2 * lerpFactor;
+      } else if (keys.c) {
+        const lerpFactor = 0.2;
+        rig.inputs.hmd.position.y = rig.inputs.hmd.position.y * (1-lerpFactor) + rig.height*0.6 * lerpFactor;
       } else {
         const lerpFactor = 0.3;
         rig.inputs.hmd.position.y = rig.inputs.hmd.position.y * (1-lerpFactor) + rig.height*0.9 * lerpFactor;
@@ -1164,6 +1167,7 @@ const keys = {
   left: false,
   right: false,
   z: false,
+  c: false,
   space: false,
 };
 let controlsBound = null;
@@ -1198,6 +1202,10 @@ const _bindControls = type => {
         keys.z = true;
         break;
       }
+      case 67: {
+        keys.c = true;
+        break;
+      }
       case 32: {
         keys.space = true;
         break;
@@ -1225,6 +1233,10 @@ const _bindControls = type => {
       }
       case 90: {
         keys.z = false;
+        break;
+      }
+      case 67: {
+        keys.c = false;
         break;
       }
       case 32: {
