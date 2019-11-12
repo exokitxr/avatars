@@ -426,6 +426,8 @@ const localMatrix = new THREE.Matrix4();
 const localEuler = new THREE.Euler();
 const localRay = new THREE.Ray();
 
+const z180Quaternion = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI);
+
 const scene = new THREE.Scene();
 
 const camera = new THREE.PerspectiveCamera(90, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -1068,21 +1070,15 @@ function animate(timestamp, frame, referenceSpace) {
       rig.inputs.rightGamepad.quaternion.copy(rig.inputs.hmd.quaternion);
 
       if (controlsBound === 'firstperson') {
-        camera.position.copy(rig.inputs.hmd.position)
-          .multiply(scene.scale);
-        camera.quaternion.copy(rig.inputs.hmd.quaternion);
+        rig.outputs.eyes.matrixWorld.decompose(camera.position, camera.quaternion, localVector);
+        camera.position.divideScalar(heightFactor).add(scene.position);
+        camera.quaternion.multiply(z180Quaternion);
         rig.decapitate();
       } else if (controlsBound === 'thirdperson') {
-        camera.position.copy(rig.inputs.hmd.position)
-          .multiply(scene.scale)
-          .add(new THREE.Vector3(0, 1, 2).applyQuaternion(rig.inputs.hmd.quaternion));
-        camera.quaternion.setFromRotationMatrix(
-          new THREE.Matrix4().lookAt(
-            camera.position,
-            rig.inputs.hmd.position.clone().multiply(scene.scale),
-            new THREE.Vector3(0, 1, 0).applyQuaternion(rig.inputs.hmd.quaternion)
-          )
-        );
+        rig.outputs.eyes.matrixWorld.decompose(camera.position, camera.quaternion, localVector);
+        camera.position.divideScalar(heightFactor).add(scene.position);
+        camera.quaternion.multiply(z180Quaternion);
+        camera.position.add(localVector.set(0, 0.5, 2).applyQuaternion(camera.quaternion));
         rig.undecapitate();
       } else {
         rig.undecapitate();
@@ -1766,7 +1762,7 @@ scaleDownButton.addEventListener('click', () => {
   const scaleFactor = 1.25;
 
   const orbitControlsTarget = localVector.copy(orbitControls.target);
-  scene.matrix.copy(scene.matrix)
+  scene.matrix
     .multiply(localMatrix.makeTranslation(orbitControlsTarget.x, orbitControlsTarget.y, orbitControlsTarget.z))
     .multiply(localMatrix.makeScale(scaleFactor, scaleFactor, scaleFactor))
     .multiply(localMatrix.makeTranslation(-orbitControlsTarget.x, -orbitControlsTarget.y, -orbitControlsTarget.z))
@@ -1781,7 +1777,7 @@ scaleUpButton.addEventListener('click', () => {
   const scaleFactor = 1/1.25;
 
   const orbitControlsTarget = localVector.copy(orbitControls.target);
-  scene.matrix.copy(scene.matrix)
+  scene.matrix
     .multiply(localMatrix.makeTranslation(orbitControlsTarget.x, orbitControlsTarget.y, orbitControlsTarget.z))
     .multiply(localMatrix.makeScale(scaleFactor, scaleFactor, scaleFactor))
     .multiply(localMatrix.makeTranslation(-orbitControlsTarget.x, -orbitControlsTarget.y, -orbitControlsTarget.z))
