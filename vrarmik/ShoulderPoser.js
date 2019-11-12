@@ -1,7 +1,5 @@
 import {Helpers} from './Unity.js';
 
-const wristToHandDistance = 0.05;
-
 const rightVector = new THREE.Vector3(1, 0, 0);
 const z180Quaternion = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI);
 
@@ -334,11 +332,9 @@ class ShoulderPoser
 			  .inverse();
 
 			const distanceLeftHand = localVector.copy(this.vrTransforms.leftHand.position)
-			  .add(localVector2.set(0, 0, wristToHandDistance).applyQuaternion(this.vrTransforms.leftHand.quaternion))
 			  .sub(this.vrTransforms.head.position)
 			  .applyQuaternion(hipsRotationInverse);
 			const distanceRightHand = localVector2.copy(this.vrTransforms.rightHand.position)
-		  	.add(localVector3.set(0, 0, wristToHandDistance).applyQuaternion(this.vrTransforms.rightHand.quaternion))
 			  .sub(this.vrTransforms.head.position)
 			  .applyQuaternion(hipsRotationInverse);
 

@@ -422,6 +422,7 @@ const localVector3 = new THREE.Vector3();
 const localVector4 = new THREE.Vector3();
 const localVector5 = new THREE.Vector3();
 const localQuaternion = new THREE.Quaternion();
+const localQuaternion2 = new THREE.Quaternion();
 const localMatrix = new THREE.Matrix4();
 const localEuler = new THREE.Euler();
 const localRay = new THREE.Ray();
@@ -830,7 +831,7 @@ function animate(timestamp, frame, referenceSpace) {
         const handedness = i === 0 ? 'left' : 'right';
         const inputSource = inputSources.find(inputSource => inputSource.handedness === handedness);
         let pose, gamepad;
-        if (inputSource && (pose = frame.getPose(inputSource.targetRaySpace, referenceSpace)) && (gamepad = inputSource.gamepad || gamepads[i])) {
+        if (inputSource && (pose = frame.getPose(inputSource.gripSpace, referenceSpace)) && (gamepad = inputSource.gamepad || gamepads[i])) {
           const {transform} = pose;
           const {position, orientation, matrix} = transform;
           if (position) { // new WebXR api
@@ -1073,11 +1074,13 @@ function animate(timestamp, frame, referenceSpace) {
       }
 
       rig.inputs.leftGamepad.position.copy(rig.inputs.hmd.position)
-        .add(new THREE.Vector3(0.15, -0.15, -0.2).multiplyScalar(rig.height).applyQuaternion(rig.inputs.hmd.quaternion));
-      rig.inputs.leftGamepad.quaternion.copy(rig.inputs.hmd.quaternion);
+        .add(localVector.set(0.15, -0.15, -0.2).multiplyScalar(rig.height).applyQuaternion(rig.inputs.hmd.quaternion));
+      rig.inputs.leftGamepad.quaternion.copy(rig.inputs.hmd.quaternion)
+        .multiply(localQuaternion2.setFromAxisAngle(localVector.set(1, 0, 0), Math.PI*0.5));
       rig.inputs.rightGamepad.position.copy(rig.inputs.hmd.position)
-        .add(new THREE.Vector3(-0.15, -0.15, -0.2).multiplyScalar(rig.height).applyQuaternion(rig.inputs.hmd.quaternion));
-      rig.inputs.rightGamepad.quaternion.copy(rig.inputs.hmd.quaternion);
+        .add(localVector.set(-0.15, -0.15, -0.2).multiplyScalar(rig.height).applyQuaternion(rig.inputs.hmd.quaternion));
+      rig.inputs.rightGamepad.quaternion.copy(rig.inputs.hmd.quaternion)
+        .multiply(localQuaternion2.setFromAxisAngle(localVector.set(1, 0, 0), Math.PI*0.5))
 
       if (controlsBound === 'firstperson') {
         rig.outputs.eyes.matrixWorld.decompose(camera.position, camera.quaternion, localVector);

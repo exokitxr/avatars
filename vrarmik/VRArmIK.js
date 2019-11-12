@@ -1,7 +1,5 @@
 import {Helpers} from './Unity.js';
 
-const wristToHandDistance = 0.05;
-
 const zeroVector = new THREE.Vector3();
 const forwardVector = new THREE.Vector3(0, 0, 1);
 const leftRotation = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI/2);
@@ -50,7 +48,7 @@ const localMatrix = new THREE.Matrix4();
 
 			const upperArmPosition = Helpers.getWorldPosition(this.arm.upperArm, localVector);
       const handRotation = this.target.quaternion;
-       const handPosition = localVector2.copy(this.target.position).add(localVector3.set(0, 0, wristToHandDistance).applyQuaternion(handRotation));
+      const handPosition = localVector2.copy(this.target.position);
 
       const shoulderRotation = Helpers.getWorldQuaternion(this.shoulder.transform, localQuaternion);
       const shoulderRotationInverse = localQuaternion2.copy(shoulderRotation).inverse();
