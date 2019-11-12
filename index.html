@@ -819,8 +819,12 @@ const realDateNow = (now => () => dateOffset + now())(Date.now);
 function animate(timestamp, frame, referenceSpace) {
   if (rig) {
     if (renderer.vr.enabled) {
-      const vrCamera = renderer.vr.enabled ? renderer.vr.getCamera(camera).cameras[0] : camera;
+      const vrCameras = renderer.vr.getCamera(camera).cameras;
+      const vrCamera = vrCameras[0];
+      const vrCamera2 = vrCameras[1];
       vrCamera.matrixWorld.decompose(vrCamera.position, vrCamera.quaternion, vrCamera.scale);
+      vrCamera2.matrixWorld.decompose(vrCamera2.position, vrCamera2.quaternion, vrCamera2.scale);
+      vrCamera.position.add(vrCamera2.position).divideScalar(2);
       const {inputSources} = session;
       const gamepads = navigator.getGamepads();
 
