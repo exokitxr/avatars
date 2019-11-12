@@ -1070,10 +1070,10 @@ function animate(timestamp, frame, referenceSpace) {
       }
 
       rig.inputs.leftGamepad.position.copy(rig.inputs.hmd.position)
-        .add(new THREE.Vector3(0.2, -0.2, -0.2).divide(scene.scale).applyQuaternion(rig.inputs.hmd.quaternion));
+        .add(new THREE.Vector3(0.15, -0.15, -0.2).multiplyScalar(rig.height).applyQuaternion(rig.inputs.hmd.quaternion));
       rig.inputs.leftGamepad.quaternion.copy(rig.inputs.hmd.quaternion);
       rig.inputs.rightGamepad.position.copy(rig.inputs.hmd.position)
-        .add(new THREE.Vector3(-0.2, -0.2, -0.2).divide(scene.scale).applyQuaternion(rig.inputs.hmd.quaternion));
+        .add(new THREE.Vector3(-0.15, -0.15, -0.2).multiplyScalar(rig.height).applyQuaternion(rig.inputs.hmd.quaternion));
       rig.inputs.rightGamepad.quaternion.copy(rig.inputs.hmd.quaternion);
 
       if (controlsBound === 'firstperson') {
