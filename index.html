@@ -808,7 +808,7 @@ const _setLocalModel = newModel => {
 };
 
 const lastPresseds = [false, false];
-const lastGrips = [false, false];
+const lastBs = [false, false];
 const lastPads = [false, false];
 const lastPositions = [new THREE.Vector3(), new THREE.Vector3()];
 const startGripPositions = [new THREE.Vector3(), new THREE.Vector3()];
@@ -842,10 +842,13 @@ function animate(timestamp, frame, referenceSpace) {
             const lastPressed = lastPresseds[i];
             const pointer = gamepad.buttons[0].value;
             const grip = gamepad.buttons[1].value;
-            const lastGrip = lastGrips[i];
             const pad = gamepad.axes[1] <= -0.5 || gamepad.axes[3] <= -0.5;
             const padX = gamepad.axes[0] !== 0 ? gamepad.axes[0] : gamepad.axes[2];
             const padY = gamepad.axes[1] !== 0 ? gamepad.axes[1] : gamepad.axes[3];
+            const stick = !!gamepad.buttons[3] && gamepad.buttons[3].pressed;
+            const a = !!gamepad.buttons[4] && gamepad.buttons[4].pressed;
+            const b = !!gamepad.buttons[5] && gamepad.buttons[5].pressed;
+            const lastB = lastBs[i];
             return {
               rawPosition: rawP,
               position: p,
@@ -853,11 +856,14 @@ function animate(timestamp, frame, referenceSpace) {
               pressed,
               lastPressed,
               pointer,
-              lastGrip,
               grip,
               pad,
               padX,
               padY,
+              stick,
+              a,
+              b,
+              lastB,
             };
           } else if (matrix) { // old WebXR api
             const rawP = localVector;
@@ -872,10 +878,13 @@ function animate(timestamp, frame, referenceSpace) {
             const lastPressed = lastPresseds[i];
             const pointer = gamepad.buttons[0].value;
             const grip = gamepad.buttons[1].value;
-            const lastGrip = lastGrips[i];
             const pad = gamepad.axes[1] <= -0.5 || gamepad.axes[3] <= -0.5;
             const padX = gamepad.axes[0] !== 0 ? gamepad.axes[0] : gamepad.axes[2];
             const padY = gamepad.axes[1] !== 0 ? gamepad.axes[1] : gamepad.axes[3];
+            const stick = !!gamepad.buttons[3] && gamepad.buttons[3].pressed;
+            const a = !!gamepad.buttons[4] && gamepad.buttons[4].pressed;
+            const b = !!gamepad.buttons[5] && gamepad.buttons[5].pressed;
+            const lastB = lastBs[i];
             return {
               rawPosition: rawP,
               position: p,
@@ -884,10 +893,13 @@ function animate(timestamp, frame, referenceSpace) {
               lastPressed,
               pointer,
               grip,
-              lastGrip,
               pad,
               padX,
               padY,
+              stick,
+              a,
+              b,
+              lastB,
             };
           } else {
             return null;
@@ -936,12 +948,12 @@ function animate(timestamp, frame, referenceSpace) {
         }
       };
 
-      const wasLastGripped = lastGrips[0] && lastGrips[1];
+      const wasLastBd = lastBs[0] && lastBs[1];
 
       const lg = _getGamepad(1);
       let li = -1;
       if (lg) {
-        const {rawPosition, position, quaternion, pressed, lastPressed, pointer, grip, lastGrip, pad, padX, padY} = lg;
+        const {rawPosition, position, quaternion, pressed, lastPressed, pointer, grip, pad, padX, padY, b} = lg;
         rig.inputs.leftGamepad.quaternion.copy(quaternion);
         rig.inputs.leftGamepad.position.copy(position);
         rig.inputs.leftGamepad.pointer = pointer;
@@ -958,13 +970,13 @@ function animate(timestamp, frame, referenceSpace) {
 
         lastPresseds[0] = pressed;
         lastPads[0] = pad;
-        lastGrips[0] = grip;
+        lastBs[0] = b;
         lastPositions[0].copy(rawPosition);
       }
       const rg = _getGamepad(0);
       let ri = -1;
       if (rg) {
-        const {rawPosition, position, quaternion, pressed, lastPressed, pointer, grip, lastGrip, pad, padX, padY} = rg;
+        const {rawPosition, position, quaternion, pressed, lastPressed, pointer, grip, pad, padX, padY, b} = rg;
         rig.inputs.rightGamepad.quaternion.copy(quaternion);
         rig.inputs.rightGamepad.position.copy(position);
         rig.inputs.rightGamepad.pointer = pointer;
@@ -981,7 +993,7 @@ function animate(timestamp, frame, referenceSpace) {
 
         lastPresseds[1] = pressed;
         lastPads[1] = pad;
-        lastGrips[1] = grip;
+        lastBs[1] = b;
         lastPositions[1].copy(rawPosition);
       }
 
@@ -1021,10 +1033,10 @@ function animate(timestamp, frame, referenceSpace) {
 
         // _startScale();
       };
-      const isLastGripped = lastGrips[0] && lastGrips[1];
-      if (!wasLastGripped && isLastGripped) {
+      const isLastBd = lastBs[0] && lastBs[1];
+      if (!wasLastBd && isLastBd) {
         _startScale();
-      } else if (isLastGripped) {
+      } else if (isLastBd) {
         _processScale();
       }
 
