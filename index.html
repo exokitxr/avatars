@@ -413,7 +413,7 @@ import Avatar from './vrarmik/avatars.js';
 import {XRChannelConnection} from 'https://multiplayer.exokit.org/multiplayer.js';
 
 const peerPoseUpdateRate = 50;
-const walkSpeed = 0.03;
+const walkSpeed = 0.025;
 const floorPlane = new THREE.Plane().setFromNormalAndCoplanarPoint(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 0));
 
 const localVector = new THREE.Vector3();
@@ -923,10 +923,15 @@ function animate(timestamp, frame, referenceSpace) {
         }
 
         if (padX !== 0 || padY !== 0) {
+          localVector.set(padX, 0, padY);
+          const moveLength = localVector.length();
+          if (moveLength > 1) {
+            localVector.divideScalar(moveLength);
+          }
           const hmdEuler = localEuler.setFromQuaternion(rig.inputs.hmd.quaternion, 'YXZ');
           localEuler.x = 0;
           localEuler.z = 0;
-          scene.position.sub(localVector.set(padX, 0, padY).applyEuler(hmdEuler).multiplyScalar(walkSpeed));
+          scene.position.sub(localVector.multiplyScalar(walkSpeed * rig.height).applyEuler(hmdEuler));
         }
       };
 
@@ -1039,18 +1044,20 @@ function animate(timestamp, frame, referenceSpace) {
       localEuler.z = 0;
       const floorRotation = localQuaternion.setFromEuler(localEuler);
 
+      localVector.set(0, 0, 0);
       if (keys.left) {
-        rig.inputs.hmd.position.add(localVector.set(-walkSpeed, 0, 0).applyQuaternion(floorRotation));
+        localVector.x += -1;
       }
       if (keys.right) {
-        rig.inputs.hmd.position.add(localVector.set(walkSpeed, 0, 0).applyQuaternion(floorRotation));
+        localVector.x += 1;
       }
       if (keys.up) {
-        rig.inputs.hmd.position.add(localVector.set(0, 0, -walkSpeed).applyQuaternion(floorRotation));
+        localVector.z += -1;
       }
       if (keys.down) {
-        rig.inputs.hmd.position.add(localVector.set(0, 0, walkSpeed).applyQuaternion(floorRotation));
+        localVector.z += 1;
       }
+      rig.inputs.hmd.position.add(localVector.normalize().multiplyScalar(walkSpeed * rig.height).applyQuaternion(floorRotation));
       if (keys.space) {
         const lerpFactor = 0.3;
         rig.inputs.hmd.position.y = rig.inputs.hmd.position.y * (1-lerpFactor) + rig.height*1.1 * lerpFactor;
