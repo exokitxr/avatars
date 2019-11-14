@@ -1600,7 +1600,7 @@ connectButton.addEventListener('click', () => {
           peerConnection.rig.update = (_update => function update() {
             const now = Date.now();
             const {timestamp} = peerConnection.rig.targets;
-            const lerpFactor = Math.min(Math.max((now - timestamp) / (peerPoseUpdateRate*2), 0), 1);  
+            const lerpFactor = Math.min(Math.max((now - timestamp) / (peerPoseUpdateRate*2), 0), 1);
 
             peerConnection.rig.inputs.hmd.quaternion.copy(peerConnection.rig.starts.hmd.rotation).slerp(peerConnection.rig.targets.hmd.rotation, lerpFactor);
             peerConnection.rig.inputs.hmd.position.copy(peerConnection.rig.starts.hmd.position).lerp(
