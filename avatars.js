@@ -1,8 +1,8 @@
-import './three-vrm.js';
-import {fixSkeletonZForward} from './SkeletonUtils.js';
-import PoseManager from './PoseManager.js';
-import ShoulderTransforms from './ShoulderTransforms.js';
-import LegsManager from './LegsManager.js';
+import './vrarmik/three-vrm.js';
+import {fixSkeletonZForward} from './vrarmik/SkeletonUtils.js';
+import PoseManager from './vrarmik/PoseManager.js';
+import ShoulderTransforms from './vrarmik/ShoulderTransforms.js';
+import LegsManager from './vrarmik/LegsManager.js';
 import MicrophoneWorker from './microphone-worker.js';
 
 const zeroVector = new THREE.Vector3();
