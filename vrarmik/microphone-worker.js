@@ -1,4 +1,4 @@
- class MicrophoneWorker extends EventTarget {
+class MicrophoneWorker extends EventTarget {
   constructor(mediaStream, options = {}) {
     super();
 
