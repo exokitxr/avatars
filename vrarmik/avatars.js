@@ -3,6 +3,7 @@ import {fixSkeletonZForward} from './SkeletonUtils.js';
 import PoseManager from './PoseManager.js';
 import ShoulderTransforms from './ShoulderTransforms.js';
 import LegsManager from './LegsManager.js';
+import MicrophoneWorker from './microphone-worker.js';
 
 const zeroVector = new THREE.Vector3();
 const upRotation = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.PI/2);
@@ -754,7 +755,7 @@ class Avatar {
 	    Right_ankle: this.outputs.leftFoot,
 	  };
 
-    this.audioContext = null;
+    this.microphoneWorker = null;
     this.volume = 0;
     this.setMicrophoneMediaStream(options.microphoneMediaStream, {
       muted: options.muted,
@@ -923,32 +924,18 @@ class Avatar {
 	}
 
   async setMicrophoneMediaStream(microphoneMediaStream, options = {}) {
-    if (this.audioContext) {
-      this.audioContext.close();
-      this.audioContext = null;
+    if (this.microphoneWorker) {
+      this.microphoneWorker.close();
+      this.microphoneWorker = null;
       setTimeout(() => {
         this.volume = 0;
       });
     }
     if (microphoneMediaStream) {
-      const audio = document.createElement('audio');
-      audio.srcObject = microphoneMediaStream;
-      audio.muted = true;
-      this.audioContext = new AudioContext();
-      const mediaStreamSource = this.audioContext.createMediaStreamSource(microphoneMediaStream);
-
-      await this.audioContext.audioWorklet.addModule('vrarmik/audio-volume-worklet.js');
-      const audioWorkletNode = new AudioWorkletNode(this.audioContext, 'volume-processor');
-      if (options.muted === false) {
-        audioWorkletNode.port.postMessage(JSON.stringify({
-          method: 'muted',
-          muted: false,
-        }));
-      }
-      audioWorkletNode.port.onmessage = e => {
+      this.microphoneWorker = new MicrophoneWorker(microphoneMediaStream, options);
+      this.microphoneWorker.addEventListener('volume', e => {
         this.volume = this.volume*0.8 + e.data*0.2;
-      };
-      mediaStreamSource.connect(audioWorkletNode).connect(this.audioContext.destination);
+      });
     }
   }
 
