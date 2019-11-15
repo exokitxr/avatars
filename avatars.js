@@ -59,6 +59,54 @@ const _copySkeleton = (src, dst) => {
   dst.calculateInverses();
 };
 
+const cubeGeometry = new THREE.ConeBufferGeometry(0.05, 0.2, 3)
+  .applyMatrix(new THREE.Matrix4().makeRotationFromQuaternion(
+    new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 1)))
+  );
+const cubeMaterials ={};
+const _getCubeMaterial = color => {
+  let material = cubeMaterials[color];
+  if (!material) {
+    material = new THREE.MeshPhongMaterial({
+      color,
+      flatShading: true,
+    });
+    cubeMaterials[color] = material;
+  }
+  return material;
+}
+const _makeCubeMesh = (color = 0x0000FF) => {
+  const mesh = new THREE.Mesh(cubeGeometry, _getCubeMaterial(color));
+  mesh.frustumCulled = false;
+  /* if (color === 0x008000 || color === 0x808000) {
+    mesh.add(new THREE.AxesHelper());
+  } */
+  mesh.updateMatrixWorld = () => {};
+  return mesh;
+};
+const _makeDebugMeshes = () => ({
+  eyes: _makeCubeMesh(0xFF0000),
+  head: _makeCubeMesh(0xFF8080),
+
+  chest: _makeCubeMesh(0xFFFF00),
+  leftShoulder: _makeCubeMesh(0x00FF00),
+  rightShoulder: _makeCubeMesh(0x008000),
+  leftUpperArm: _makeCubeMesh(0x00FFFF),
+  rightUpperArm: _makeCubeMesh(0x008080),
+  leftLowerArm: _makeCubeMesh(0x0000FF),
+  rightLowerArm: _makeCubeMesh(0x000080),
+  leftHand: _makeCubeMesh(0xFFFFFF),
+  rightHand: _makeCubeMesh(0x808080),
+
+  hips: _makeCubeMesh(0xFF0000),
+  leftUpperLeg: _makeCubeMesh(0xFFFF00),
+  rightUpperLeg: _makeCubeMesh(0x808000),
+  leftLowerLeg: _makeCubeMesh(0x00FF00),
+  rightLowerLeg: _makeCubeMesh(0x008000),
+  leftFoot: _makeCubeMesh(0xFFFFFF),
+  rightFoot: _makeCubeMesh(0x808080),
+});
+
 class Avatar {
 	constructor(object, options = {}) {
     const model = object.isMesh ? object : object.scene;
@@ -85,6 +133,16 @@ class Avatar {
     if (poseSkeleton) {
       _copySkeleton(poseSkeleton, skeleton);
       poseSkeletonSkinnedMesh.bind(skeleton);
+    }
+
+    if (options.debug) {
+      const debugMeshes = _makeDebugMeshes();
+      for (const k in debugMeshes) {
+        this.model.add(debugMeshes[k]);
+      }
+      this.debugMeshes = debugMeshes;
+    } else {
+      this.debugMeshes = null;
     }
 
     const _getTailBones = skeleton => {
@@ -920,6 +978,14 @@ class Avatar {
           }
         }
       });
+    }
+
+    if (this.debugMeshes) {
+      for (const k in this.debugMeshes) {
+        const mesh = this.debugMeshes[k];
+        const output = this.outputs[k];
+        mesh.matrixWorld.multiplyMatrices(this.model.matrixWorld, output.matrixWorld);
+      }
     }
 	}
 

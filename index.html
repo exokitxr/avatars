@@ -450,30 +450,6 @@ scene.add(directionalLight2); */
 const gridHelper = new THREE.GridHelper(10, 10);
 scene.add(gridHelper);
 
-const cubeGeometry = new THREE.ConeBufferGeometry(0.05, 0.2, 3)
-  .applyMatrix(new THREE.Matrix4().makeRotationFromQuaternion(
-    new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 1)))
-  );
-const materials ={};
-const _getCubeMaterial = color => {
-  let material = materials[color];
-  if (!material) {
-    material = new THREE.MeshPhongMaterial({
-      color,
-      flatShading: true,
-    });
-    materials[color] = material;
-  }
-  return material;
-}
-const _makeCubeMesh = (color = 0x0000FF) => {
-  const mesh = new THREE.Mesh(cubeGeometry, _getCubeMaterial(color));
-  mesh.frustumCulled = false;
-  if (color === 0x008000 || color === 0x808000) {
-    // mesh.add(new THREE.AxesHelper());
-  }
-  return mesh;
-};
 const _makeTextMesh = (s = '', color = 0x000000, size = 1) => {
   // create a geometry of packed bitmap glyphs,
   // word wrapped to 300px and right-aligned
@@ -514,43 +490,6 @@ const _makeTextMesh = (s = '', color = 0x000000, size = 1) => {
   };
   return mesh;
 };
-const meshes = {
-  eyes: _makeCubeMesh(0xFF0000),
-  head: _makeCubeMesh(0xFF8080),
-
-  chest: _makeCubeMesh(0xFFFF00),
-  leftShoulder: _makeCubeMesh(0x00FF00),
-  rightShoulder: _makeCubeMesh(0x008000),
-  leftUpperArm: _makeCubeMesh(0x00FFFF),
-  rightUpperArm: _makeCubeMesh(0x008080),
-  leftLowerArm: _makeCubeMesh(0x0000FF),
-  rightLowerArm: _makeCubeMesh(0x000080),
-  leftHand: _makeCubeMesh(0xFFFFFF),
-  rightHand: _makeCubeMesh(0x808080),
-
-  hips: _makeCubeMesh(0xFF0000),
-  leftUpperLeg: _makeCubeMesh(0xFFFF00),
-  rightUpperLeg: _makeCubeMesh(0x808000),
-  leftLowerLeg: _makeCubeMesh(0x00FF00),
-  rightLowerLeg: _makeCubeMesh(0x008000),
-  leftFoot: _makeCubeMesh(0xFFFFFF),
-  rightFoot: _makeCubeMesh(0x808080),
-};
-for (const k in meshes) {
-  // scene.add(meshes[k]);
-}
-/* scene.remove(meshes.shoulderLeft);
-scene.remove(meshes.upperArmLeft);
-scene.remove(meshes.lowerArmLeft);
-scene.remove(meshes.handLeft);
-scene.remove(meshes.shoulderRight);
-scene.remove(meshes.upperArmRight);
-scene.remove(meshes.lowerArmRight);
-scene.remove(meshes.handRight);
-scene.remove(meshes.shoulderRight);
-scene.remove(meshes.upperLegRight);
-scene.remove(meshes.lowerLegRight);
-scene.remove(meshes.footRight); */
 
 const teleportGeometry = new THREE.TorusBufferGeometry(0.5, 0.15, 3, 5)
   .applyMatrix(new THREE.Matrix4().makeRotationX(-(Math.PI / 2)))
@@ -786,6 +725,7 @@ const _setLocalModel = newModel => {
     visemes: true,
     // decapitate: true,
     microphoneMediaStream,
+    // debug: true,
   });
   scene.add(model.scene);
   window.model = newModel;
@@ -1134,15 +1074,6 @@ function animate(timestamp, frame, referenceSpace) {
     }
 
     rig.update();
-
-    for (const k in meshes) {
-      const mesh = meshes[k];
-      const output = rig.outputs[k];
-      /* if (!mesh || !output) {
-        console.warn('bad k', k);
-      } */
-      mesh.matrix.copy(output.matrixWorld).decompose(mesh.position, mesh.quaternion, mesh.scale);
-    }
   }
 
   for (let i = 0; i < peerConnections.length; i++) {
@@ -1535,6 +1466,7 @@ connectButton.addEventListener('click', () => {
             visemes: true,
             microphoneMediaStream: peerConnection.mediaStream,
             muted: false,
+            // debug: true,
           });
           scene.add(peerConnection.model.scene);
 
