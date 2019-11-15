@@ -792,8 +792,7 @@ const _setLocalModel = newModel => {
 
   heightFactor = _getHeightFactor(rig.height);
 
-  scene.scale.set(1, 1, 1);
-  scene.scale.divideScalar(heightFactor);
+  scene.scale.set(1, 1, 1).divideScalar(heightFactor);
 };
 
 const lastPresseds = [false, false];
