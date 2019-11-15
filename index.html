@@ -536,11 +536,9 @@ const meshes = {
   leftFoot: _makeCubeMesh(0xFFFFFF),
   rightFoot: _makeCubeMesh(0x808080),
 };
-const meshDolly = new THREE.Object3D();
 for (const k in meshes) {
-  // meshDolly.add(meshes[k]);
+  // scene.add(meshes[k]);
 }
-scene.add(meshDolly);
 /* scene.remove(meshes.shoulderLeft);
 scene.remove(meshes.upperArmLeft);
 scene.remove(meshes.lowerArmLeft);
@@ -754,13 +752,11 @@ const mirrorMesh = (() => {
   mesh.onBeforeRender2 = () => {
     if (rig) {
       rig.undecapitate();
-      // meshDolly.visible = true;
     }
   };
   mesh.onAfterRender2 = () => {
     if (rig && session) {
       rig.decapitate();
-      // meshDolly.visible = false;
     }
   };
 
@@ -777,7 +773,7 @@ let modelUrl = '';
 let heightFactor = 0;
 const _setLocalModel = newModel => {
   if (rig) {
-    meshDolly.remove(model.scene);
+    scene.remove(model.scene);
     rig.destroy();
     rig = null;
     model = null;
@@ -791,7 +787,7 @@ const _setLocalModel = newModel => {
     // decapitate: true,
     microphoneMediaStream,
   });
-  meshDolly.add(model.scene);
+  scene.add(model.scene);
   window.model = newModel;
 
   heightFactor = _getHeightFactor(rig.height);
@@ -1306,9 +1302,6 @@ enterXrButton.addEventListener('click', async () => {
   session = await navigator.xr.requestSession('immersive-vr', {
     requiredFeatures: ['local-floor'],
   });
-  /* if (model) {
-    meshDolly.visible = false;
-  } */
   let referenceSpace;
   let referenceSpaceType = '';
   const _loadReferenceSpace = async () => {
