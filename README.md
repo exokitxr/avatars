@@ -60,6 +60,9 @@ const avatar = new Avatar(model, { // model is THREE.Mesh, can use https://githu
   microphoneMediaStream,
   // false to passthrough microphone audio
   muted: true,
+
+  // add debug bone geometry
+  debug: true,
 });
 
 avatar.setMicrophoneMediaStream(microphoneMediaStream); // set microphoneMediaStream separately
