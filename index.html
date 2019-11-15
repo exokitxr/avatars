@@ -797,13 +797,6 @@ const _setLocalModel = newModel => {
   heightFactor = _getHeightFactor(rig.height);
 
   scene.scale.set(1, 1, 1);
-  /* mirrorMesh.position.z = -heightFactor;
-  mirrorMesh.scale.set(1, 1, 1).multiplyScalar(heightFactor);
-  for (let i = 0; i < teleportMeshes.length; i++) {
-    teleportMeshes[i].scale.set(1, 1, 1).multiplyScalar(heightFactor);
-  }
-  scene.updateMatrixWorld();
-  mirrorMesh.update(); */
   scene.scale.divideScalar(heightFactor);
 };
 
