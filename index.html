@@ -601,8 +601,11 @@ for (let i = 0; i < aAvatars.length; i++) {
     e.preventDefault();
 
     const {href} = aAvatar;
-    const model = await _loadModelUrl(href);
-    _setLocalModel(model);
+    if (href) {
+      _setLocalModel(await _loadModelUrl(href));
+    } else {
+      _setLocalModel(null);
+    }
     modelUrl = href;
     _sendAllPeerConnections(JSON.stringify({
       method: 'model',
@@ -711,7 +714,6 @@ const userHeight = 1.7;
 const _getHeightFactor = rigHeight => rigHeight / userHeight;
 
 let rig = null;
-let model = null;
 let modelUrl = '';
 let heightFactor = 0;
 const _setLocalModel = newModel => {
@@ -719,17 +721,15 @@ const _setLocalModel = newModel => {
     scene.remove(rig.model);
     rig.destroy();
     rig = null;
-    model = null;
   }
 
-  model = newModel;
   rig = new Avatar(newModel, {
     fingers: true,
     hair: true,
     visemes: true,
     // decapitate: true,
     microphoneMediaStream,
-    // debug: true,
+    debug: !newModel,
   });
   scene.add(rig.model);
   window.model = newModel;
@@ -1354,7 +1354,6 @@ connectButton.addEventListener('click', () => {
     channelConnection.addEventListener('peerconnection', e => {
       const peerConnection = e.detail;
 
-      peerConnection.model = null;
       peerConnection.rig = null;
       peerConnection.mediaStream = null;
       let updateInterval = 0;
@@ -1405,8 +1404,8 @@ connectButton.addEventListener('click', () => {
 
         clearInterval(updateInterval);
 
-        if (peerConnection.model) {
-          scene.remove(peerConnection.model.scene);
+        if (peerConnection.rig) {
+          scene.remove(peerConnection.rig.model);
         }
       });
       peerConnection.addEventListener('pose', e => {
@@ -1463,14 +1462,14 @@ connectButton.addEventListener('click', () => {
             peerConnection.rig.destroy();
           }
 
-          peerConnection.model = await _loadModelUrl(url);
-          peerConnection.rig = new Avatar(peerConnection.model, {
+          const model = url ? await _loadModelUrl(url) : null;
+          peerConnection.rig = new Avatar(model, {
             fingers: true,
             hair: true,
             visemes: true,
             microphoneMediaStream: peerConnection.mediaStream,
             muted: false,
-            // debug: true,
+            debug: !model,
           });
           scene.add(peerConnection.rig.model);
 
@@ -1594,17 +1593,14 @@ connectButton.addEventListener('click', () => {
   } */
   enableMicButton.style.display = null;
 
-  const url = aAvatars[0].href;
-  const model = await _loadModelUrl(url);
+  const {href} = aAvatars[1];
+  const model = await _loadModelUrl(href);
   _setLocalModel(model);
-  modelUrl = url;
+  modelUrl = href;
   _sendAllPeerConnections(JSON.stringify({
     method: 'model',
     url: modelUrl,
   }));
-  /* _setLocalModel({
-    scene: null,
-  }); */
 })();
 
 let loginToken = null;
