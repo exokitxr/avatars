@@ -364,10 +364,11 @@ const _importSkeleton = s => {
 class Avatar {
 	constructor(object, options = {}) {
     const model = (() => {
-      if (object && !object.isMesh) {
-        object = object.scene;
+      let o = object;
+      if (o && !o.isMesh) {
+        o = o.scene;
       }
-      if (!object) {
+      if (!o) {
         const scene = new THREE.Scene();
 
         const skinnedMesh = new THREE.Object3D();
@@ -383,9 +384,9 @@ class Avatar {
         const armature = _findArmature(hips);
         scene.add(armature);
 
-        object = scene;
+        o = scene;
       }
-      return object;
+      return o;
     })();
     this.model = model;
     this.options = options;
