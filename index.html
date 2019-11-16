@@ -712,7 +712,7 @@ let modelUrl = '';
 let heightFactor = 0;
 const _setLocalModel = newModel => {
   if (rig) {
-    scene.remove(model.scene);
+    scene.remove(rig.model);
     rig.destroy();
     rig = null;
     model = null;
@@ -727,7 +727,7 @@ const _setLocalModel = newModel => {
     microphoneMediaStream,
     // debug: true,
   });
-  scene.add(model.scene);
+  scene.add(rig.model);
   window.model = newModel;
 
   heightFactor = _getHeightFactor(rig.height);
@@ -1454,8 +1454,8 @@ connectButton.addEventListener('click', () => {
           const {url} = data;
           console.log('got peer model', {url});
 
-          if (peerConnection.model) {
-            scene.remove(peerConnection.model.scene);
+          if (peerConnection.rig) {
+            scene.remove(peerConnection.rig.model);
             peerConnection.rig.destroy();
           }
 
@@ -1468,7 +1468,7 @@ connectButton.addEventListener('click', () => {
             muted: false,
             // debug: true,
           });
-          scene.add(peerConnection.model.scene);
+          scene.add(peerConnection.rig.model);
 
           peerConnection.rig.starts = {
             hmd: {
