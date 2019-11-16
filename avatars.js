@@ -541,6 +541,9 @@ class Avatar {
     this.springBoneManager = null;
     if (options.hair) {
       new Promise((accept, reject) => {
+        if (!object) {
+          object = {};
+        }
         if (!object.parser) {
           object.parser = {
             json: {
