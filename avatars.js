@@ -703,12 +703,9 @@ class Avatar {
       .premultiply(ql2.clone().inverse());
 	  model.updateMatrixWorld(true);
 
-    for (let i = 0; i < skeleton.bones.length; i++) {
-      const bone = skeleton.bones[i];
-      if (!bone.initialQuaternion) {
-        bone.initialQuaternion = bone.quaternion.clone();
-      }
-    }
+    Hips.traverse(bone => {
+      bone.initialQuaternion = bone.quaternion.clone();
+    });
 
 	  const _averagePoint = points => {
       const result = new THREE.Vector3();
