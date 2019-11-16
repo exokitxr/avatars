@@ -4,6 +4,7 @@ import PoseManager from './vrarmik/PoseManager.js';
 import ShoulderTransforms from './vrarmik/ShoulderTransforms.js';
 import LegsManager from './vrarmik/LegsManager.js';
 import MicrophoneWorker from './microphone-worker.js';
+import skeletonString from './skeleton.js';
 
 const zeroVector = new THREE.Vector3();
 const upRotation = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.PI/2);
@@ -362,7 +363,25 @@ const _importSkeleton = s => {
 
 class Avatar {
 	constructor(object, options = {}) {
-    const model = object.isMesh ? object : object.scene;
+    const model = (() => {
+      if (object && !object.isMesh) {
+        object = object.scene;
+      }
+      if (!object) {
+        const scene = new THREE.Scene();
+        const skinnedMesh = new THREE.SkinnedMesh();
+        const skeleton = _importSkeleton(skeletonString);
+        skinnedMesh.bind(skeleton);
+        scene.add(skinnedMesh);
+
+        const hips = _findHips(skeleton);
+        const armature = _findArmature(hips);
+        scene.add(armature);
+
+        object = scene;
+      }
+      return object;
+    })();
     this.model = model;
     this.options = options;
 
