@@ -681,9 +681,7 @@ class Avatar {
 	    }
 	  });
     if (flipY) {
-      ['Hips'].forEach(name => {
-        modelBones[name].quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -Math.PI/2));
-      });
+      modelBones.Hips.quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -Math.PI/2));
     }
 	  if (!flipZ) {
 	    /* ['Left_arm', 'Right_arm'].forEach((name, i) => {
@@ -693,9 +691,7 @@ class Avatar {
 		    }
 		  }); */
 		} else {
-		  ['Hips'].forEach(name => {
-		    modelBones[name].quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI));
-		  });
+		  modelBones.Hips.quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI));
 		}
     modelBones.Right_arm.quaternion.premultiply(qr.clone().inverse());
     modelBones.Right_elbow.quaternion
