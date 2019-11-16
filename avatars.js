@@ -1006,6 +1006,11 @@ class Avatar {
         o.position.set(NaN, NaN, NaN);
         o.matrixWorld.set(NaN, NaN, NaN, NaN, NaN, NaN, NaN, NaN, NaN, NaN, NaN, NaN, NaN, NaN, NaN, NaN);
       });
+      if (this.debugMeshes) {
+        [this.debugMeshes.eyes, this.debugMeshes.head].forEach(mesh => {
+          mesh.visible = false;
+        });
+      }
       this.decapitated = true;
     }
   }
@@ -1015,6 +1020,11 @@ class Avatar {
         o.position.copy(o.savedPosition);
         o.matrixWorld.copy(o.savedMatrixWorld);
       });
+      if (this.debugMeshes) {
+        [this.debugMeshes.eyes, this.debugMeshes.head].forEach(mesh => {
+          mesh.visible = true;
+        });
+      }
       this.decapitated = false;
     }
   }
