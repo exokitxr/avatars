@@ -327,12 +327,12 @@ const _findFoot = (tailBones, left) => {
   }
 };
 const _findArmature = bone => {
-  for (; bone; bone = bone.parent) {
-    if (!bone.isBone) {
+  for (;; bone = bone.parent) {
+    if (!bone.isBone || !bone.parent) {
       return bone;
     }
   }
-  return null;
+  return null; // can't happen
 };
 
 class Avatar {
