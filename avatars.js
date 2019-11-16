@@ -369,12 +369,17 @@ class Avatar {
       }
       if (!object) {
         const scene = new THREE.Scene();
-        const skinnedMesh = new THREE.SkinnedMesh();
-        const skeleton = _importSkeleton(skeletonString);
-        skinnedMesh.bind(skeleton);
+
+        const skinnedMesh = new THREE.Object3D();
+        skinnedMesh.isSkinnedMesh = true;
+        skinnedMesh.skeleton = null;
+        skinnedMesh.bind = function(skeleton) {
+          this.skeleton = skeleton;
+        };
+        skinnedMesh.bind(_importSkeleton(skeletonString));
         scene.add(skinnedMesh);
 
-        const hips = _findHips(skeleton);
+        const hips = _findHips(skinnedMesh.skeleton);
         const armature = _findArmature(hips);
         scene.add(armature);
 
