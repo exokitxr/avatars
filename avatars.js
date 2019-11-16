@@ -335,6 +335,31 @@ const _findArmature = bone => {
   return null; // can't happen
 };
 
+const _exportBone = bone => {
+  return [bone.name, bone.position.toArray().concat(bone.quaternion.toArray()).concat(bone.scale.toArray()), bone.children.map(b => _exportBone(b))];
+};
+const _exportSkeleton = skeleton => {
+  const hips = _findHips(skeleton);
+  const armature = _findArmature(hips);
+  return JSON.stringify(_exportBone(armature));
+}
+const _importBone = b => {
+  const [name, array, children] = b;
+  const bone = new THREE.Bone();
+  bone.name = name;
+  bone.position.fromArray(array, 0);
+  bone.quaternion.fromArray(array, 3);
+  bone.scale.fromArray(array, 3+4);
+  for (let i = 0; i < children.length; i++) {
+    bone.add(_importBone(children[i]));
+  }
+  return bone;
+};
+const _importSkeleton = s => {
+  const armature = _importBone(JSON.parse(s));
+  return new THREE.Skeleton(armature.children);
+};
+
 class Avatar {
 	constructor(object, options = {}) {
     const model = object.isMesh ? object : object.scene;
