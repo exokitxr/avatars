@@ -1406,6 +1406,7 @@ connectButton.addEventListener('click', () => {
 
         if (peerConnection.rig) {
           scene.remove(peerConnection.rig.model);
+          peerConnection.rig.destroy();
         }
       });
       peerConnection.addEventListener('pose', e => {
