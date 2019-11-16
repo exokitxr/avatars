@@ -107,6 +107,234 @@ const _makeDebugMeshes = () => ({
   rightFoot: _makeCubeMesh(0x808080),
 });
 
+const _getTailBones = skeleton => {
+  const result = [];
+  const _recurse = bones => {
+    for (let i = 0; i < bones.length; i++) {
+      const bone = bones[i];
+      if (bone.children.length === 0) {
+        if (!result.includes(bone)) {
+          result.push(bone);
+        }
+      } else {
+        _recurse(bone.children);
+      }
+    }
+  };
+  _recurse(skeleton.bones);
+  return result;
+};
+const _findClosestParentBone = (bone, pred) => {
+  for (; bone; bone = bone.parent) {
+    if (pred(bone)) {
+      return bone;
+    }
+  }
+  return null;
+};
+const _findFurthestParentBone = (bone, pred) => {
+  let result = null;
+  for (; bone; bone = bone.parent) {
+    if (pred(bone)) {
+      result = bone;
+    }
+  }
+  return result;
+};
+const _distanceToParentBone = (bone, parentBone) => {
+  for (let i = 0; bone; bone = bone.parent, i++) {
+    if (bone === parentBone) {
+      return i;
+    }
+  }
+  return Infinity;
+};
+const _findClosestChildBone = (bone, pred) => {
+  const _recurse = bone => {
+    if (pred(bone)) {
+      return bone;
+    } else {
+      for (let i = 0; i < bone.children.length; i++) {
+        const result = _recurse(bone.children[i]);
+        if (result) {
+          return result;
+        }
+      }
+      return null;
+    }
+  }
+  return _recurse(bone);
+};
+const _traverseChild = (bone, distance) => {
+  if (distance <= 0) {
+    return bone;
+  } else {
+    for (let i = 0; i < bone.children.length; i++) {
+      const child = bone.children[i];
+      const subchild = _traverseChild(child, distance - 1);
+      if (subchild !== null) {
+        return subchild;
+      }
+    }
+    return null;
+  }
+};
+const _countCharacters = (name, regex) => {
+  let result = 0;
+  for (let i = 0; i < name.length; i++) {
+    if (regex.test(name[i])) {
+      result++;
+    }
+  }
+  return result;
+};
+const _findHips = skeleton => skeleton.bones.find(bone => /hip/i.test(bone.name));
+const _findHead = tailBones => {
+  const headBones = tailBones.map(tailBone => {
+    const headBone = _findFurthestParentBone(tailBone, bone => /head/i.test(bone.name));
+    if (headBone) {
+      return headBone;
+    } else {
+      return null;
+    }
+  }).filter(bone => bone);
+  const headBone = headBones.length > 0 ? headBones[0] : null;
+  if (headBone) {
+    return headBone;
+  } else {
+    return null;
+  }
+};
+const _findEye = (tailBones, left) => {
+  const regexp = left ? /l/i : /r/i;
+  const eyeBones = tailBones.map(tailBone => {
+    const eyeBone = _findFurthestParentBone(tailBone, bone => /eye/i.test(bone.name) && regexp.test(bone.name.replace(/eye/gi, '')));
+    if (eyeBone) {
+      return eyeBone;
+    } else {
+      return null;
+    }
+  }).filter(spec => spec).sort((a, b) => {
+    const aName = a.name.replace(/shoulder/gi, '');
+    const aLeftBalance = _countCharacters(aName, /l/i) - _countCharacters(aName, /r/i);
+    const bName = b.name.replace(/shoulder/gi, '');
+    const bLeftBalance = _countCharacters(bName, /l/i) - _countCharacters(bName, /r/i);
+    if (!left) {
+      return aLeftBalance - bLeftBalance;
+    } else {
+      return bLeftBalance - aLeftBalance;
+    }
+  });
+  const eyeBone = eyeBones.length > 0 ? eyeBones[0] : null;
+  if (eyeBone) {
+    return eyeBone;
+  } else {
+    return null;
+  }
+};
+const _findSpine = (chest, hips) => {
+  for (let bone = chest; bone; bone = bone.parent) {
+    if (bone.parent === hips) {
+      return bone;
+    }
+  }
+  return null;
+};
+const _findShoulder = (tailBones, left) => {
+  const regexp = left ? /l/i : /r/i;
+  const shoulderBones = tailBones.map(tailBone => {
+    const shoulderBone = _findClosestParentBone(tailBone, bone => /shoulder/i.test(bone.name) && regexp.test(bone.name.replace(/shoulder/gi, '')));
+    if (shoulderBone) {
+      const distance = _distanceToParentBone(tailBone, shoulderBone);
+      if (distance >= 3) {
+        return {
+          bone: shoulderBone,
+          distance,
+        };
+      } else {
+        return null;
+      }
+    } else {
+      return null;
+    }
+  }).filter(spec => spec).sort((a, b) => {
+    const diff = b.distance - a.distance;
+    if (diff !== 0) {
+      return diff;
+    } else {
+      const aName = a.bone.name.replace(/shoulder/gi, '');
+      const aLeftBalance = _countCharacters(aName, /l/i) - _countCharacters(aName, /r/i);
+      const bName = b.bone.name.replace(/shoulder/gi, '');
+      const bLeftBalance = _countCharacters(bName, /l/i) - _countCharacters(bName, /r/i);
+      if (!left) {
+        return aLeftBalance - bLeftBalance;
+      } else {
+        return bLeftBalance - aLeftBalance;
+      }
+    }
+  });
+  const shoulderBone = shoulderBones.length > 0 ? shoulderBones[0].bone : null;
+  if (shoulderBone) {
+    return shoulderBone;
+  } else {
+    return null;
+  }
+};
+const _findHand = shoulderBone => _findClosestChildBone(shoulderBone, bone => /hand|wrist/i.test(bone.name));
+const _findFoot = (tailBones, left) => {
+  const regexp = left ? /l/i : /r/i;
+  const legBones = tailBones.map(tailBone => {
+    const footBone = _findFurthestParentBone(tailBone, bone => /foot|ankle/i.test(bone.name) && regexp.test(bone.name.replace(/foot|ankle/gi, '')));
+    if (footBone) {
+      const legBone = _findFurthestParentBone(footBone, bone => /leg|thigh/i.test(bone.name) && regexp.test(bone.name.replace(/leg|thigh/gi, '')));
+      if (legBone) {
+        const distance = _distanceToParentBone(footBone, legBone);
+        if (distance >= 2) {
+          return {
+            footBone,
+            distance,
+          };
+        } else {
+          return null;
+        }
+      } else {
+        return null;
+      }
+    } else {
+      return null;
+    }
+  }).filter(spec => spec).sort((a, b) => {
+    const diff = b.distance - a.distance;
+    if (diff !== 0) {
+      return diff;
+    } else {
+      const aName = a.footBone.name.replace(/foot|ankle/gi, '');
+      const aLeftBalance = _countCharacters(aName, /l/i) - _countCharacters(aName, /r/i);
+      const bName = b.footBone.name.replace(/foot|ankle/gi, '');
+      const bLeftBalance = _countCharacters(bName, /l/i) - _countCharacters(bName, /r/i);
+      if (!left) {
+        return aLeftBalance - bLeftBalance;
+      } else {
+        return bLeftBalance - aLeftBalance;
+      }
+    }
+  });
+  const footBone = legBones.length > 0 ? legBones[0].footBone : null;
+  if (footBone) {
+    return footBone;
+  } else {
+    return null;
+  }
+};
+const _findArmature = bone => {
+  for (; bone; bone = bone.parent) {
+    if (!bone.isBone) {
+      return bone;
+    }
+  }
+  return null;
+};
+
 class Avatar {
 	constructor(object, options = {}) {
     const model = object.isMesh ? object : object.scene;
@@ -145,248 +373,28 @@ class Avatar {
       this.debugMeshes = null;
     }
 
-    const _getTailBones = skeleton => {
-      const result = [];
-      const _recurse = bones => {
-        for (let i = 0; i < bones.length; i++) {
-          const bone = bones[i];
-          if (bone.children.length === 0) {
-            if (!result.includes(bone)) {
-              result.push(bone);
-            }
-          } else {
-            _recurse(bone.children);
-          }
-        }
-      };
-      _recurse(skeleton.bones);
-      return result;
-    };
 	  const tailBones = _getTailBones(skeleton);
     // const tailBones = skeleton.bones.filter(bone => bone.children.length === 0);
-	  const _findClosestParentBone = (bone, pred) => {
-      for (; bone; bone = bone.parent) {
-      	if (pred(bone)) {
-          return bone;
-      	}
-      }
-      return null;
-	  };
-	  const _findFurthestParentBone = (bone, pred) => {
-	  	let result = null;
-      for (; bone; bone = bone.parent) {
-      	if (pred(bone)) {
-          result = bone;
-      	}
-      }
-      return result;
-	  };
-	  const _distanceToParentBone = (bone, parentBone) => {
-      for (let i = 0; bone; bone = bone.parent, i++) {
-      	if (bone === parentBone) {
-          return i;
-      	}
-      }
-      return Infinity;
-	  };
-    const _findClosestChildBone = (bone, pred) => {
-      const _recurse = bone => {
-        if (pred(bone)) {
-          return bone;
-        } else {
-          for (let i = 0; i < bone.children.length; i++) {
-            const result = _recurse(bone.children[i]);
-            if (result) {
-              return result;
-            }
-          }
-          return null;
-        }
-      }
-      return _recurse(bone);
-    };
-	  const _traverseChild = (bone, distance) => {
-	  	if (distance <= 0) {
-	  		return bone;
-	  	} else {
-	      for (let i = 0; i < bone.children.length; i++) {
-	        const child = bone.children[i];
-	        const subchild = _traverseChild(child, distance - 1);
-	        if (subchild !== null) {
-	        	return subchild;
-	        }
-	      }
-	      return null;
-	    }
-	  };
-	  const _countCharacters = (name, regex) => {
-	  	let result = 0;
-      for (let i = 0; i < name.length; i++) {
-      	if (regex.test(name[i])) {
-      		result++;
-      	}
-      }
-      return result;
-	  };
-    const _findHead = () => {
-      const headBones = tailBones.map(tailBone => {
-        const headBone = _findFurthestParentBone(tailBone, bone => /head/i.test(bone.name));
-        if (headBone) {
-          return headBone;
-        } else {
-          return null;
-        }
-      }).filter(bone => bone);
-      const headBone = headBones.length > 0 ? headBones[0] : null;
-      if (headBone) {
-        return headBone;
-      } else {
-        return null;
-      }
-    };
-	  const _findEye = left => {
-	  	const regexp = left ? /l/i : /r/i;
-	    const eyeBones = tailBones.map(tailBone => {
-        const eyeBone = _findFurthestParentBone(tailBone, bone => /eye/i.test(bone.name) && regexp.test(bone.name.replace(/eye/gi, '')));
-        if (eyeBone) {
-        	return eyeBone;
-        } else {
-        	return null;
-        }
-	    }).filter(spec => spec).sort((a, b) => {
-      	const aName = a.name.replace(/shoulder/gi, '');
-      	const aLeftBalance = _countCharacters(aName, /l/i) - _countCharacters(aName, /r/i);
-      	const bName = b.name.replace(/shoulder/gi, '');
-      	const bLeftBalance = _countCharacters(bName, /l/i) - _countCharacters(bName, /r/i);
-      	if (!left) {
-      	  return aLeftBalance - bLeftBalance;
-      	} else {
-          return bLeftBalance - aLeftBalance;
-      	}
-	    });
-	    const eyeBone = eyeBones.length > 0 ? eyeBones[0] : null;
-	    if (eyeBone) {
-	    	return eyeBone;
-	    } else {
-	    	return null;
-	    }
-	  };
-	  const _findHips = () => {
-      return skeleton.bones.find(bone => /hip/i.test(bone.name));
-	  };
-	  const _findSpine = (chest, hips) => {
-      for (let bone = chest; bone; bone = bone.parent) {
-        if (bone.parent === hips) {
-          return bone;
-        }
-      }
-      return null;
-	  };
-	  const _findShoulder = left => {
-	  	const regexp = left ? /l/i : /r/i;
-	    const shoulderBones = tailBones.map(tailBone => {
-        const shoulderBone = _findClosestParentBone(tailBone, bone => /shoulder/i.test(bone.name) && regexp.test(bone.name.replace(/shoulder/gi, '')));
-        if (shoulderBone) {
-          const distance = _distanceToParentBone(tailBone, shoulderBone);
-          if (distance >= 3) {
-            return {
-              bone: shoulderBone,
-              distance,
-            };
-          } else {
-          	return null;
-          }
-        } else {
-        	return null;
-        }
-	    }).filter(spec => spec).sort((a, b) => {
-        const diff = b.distance - a.distance;
-        if (diff !== 0) {
-          return diff;
-        } else {
-        	const aName = a.bone.name.replace(/shoulder/gi, '');
-        	const aLeftBalance = _countCharacters(aName, /l/i) - _countCharacters(aName, /r/i);
-        	const bName = b.bone.name.replace(/shoulder/gi, '');
-        	const bLeftBalance = _countCharacters(bName, /l/i) - _countCharacters(bName, /r/i);
-        	if (!left) {
-        	  return aLeftBalance - bLeftBalance;
-        	} else {
-            return bLeftBalance - aLeftBalance;
-        	}
-        }
-	    });
-	    const shoulderBone = shoulderBones.length > 0 ? shoulderBones[0].bone : null;
-	    if (shoulderBone) {
-	    	return shoulderBone;
-	    } else {
-	    	return null;
-	    }
-	  };
-	  const _findHand = shoulderBone => _findClosestChildBone(shoulderBone, bone => /hand|wrist/i.test(bone.name));
-	  const _findFoot = left => {
-	  	const regexp = left ? /l/i : /r/i;
-	    const legBones = tailBones.map(tailBone => {
-        const footBone = _findFurthestParentBone(tailBone, bone => /foot|ankle/i.test(bone.name) && regexp.test(bone.name.replace(/foot|ankle/gi, '')));
-        if (footBone) {
-          const legBone = _findFurthestParentBone(footBone, bone => /leg|thigh/i.test(bone.name) && regexp.test(bone.name.replace(/leg|thigh/gi, '')));
-          if (legBone) {
-            const distance = _distanceToParentBone(footBone, legBone);
-            if (distance >= 2) {
-              return {
-                footBone,
-                distance,
-              };
-            } else {
-            	return null;
-            }
-          } else {
-            return null;
-          }
-        } else {
-          return null;
-        }
-	    }).filter(spec => spec).sort((a, b) => {
-        const diff = b.distance - a.distance;
-        if (diff !== 0) {
-          return diff;
-        } else {
-        	const aName = a.footBone.name.replace(/foot|ankle/gi, '');
-        	const aLeftBalance = _countCharacters(aName, /l/i) - _countCharacters(aName, /r/i);
-        	const bName = b.footBone.name.replace(/foot|ankle/gi, '');
-        	const bLeftBalance = _countCharacters(bName, /l/i) - _countCharacters(bName, /r/i);
-        	if (!left) {
-        	  return aLeftBalance - bLeftBalance;
-        	} else {
-            return bLeftBalance - aLeftBalance;
-        	}
-        }
-	    });
-	    const footBone = legBones.length > 0 ? legBones[0].footBone : null;
-	    if (footBone) {
-        return footBone;
-	    } else {
-	    	return null;
-	    }
-	  };
-	  const Eye_L = _findEye(true);
-	  const Eye_R = _findEye(false);
-	  const Head = _findHead();
+
+	  const Eye_L = _findEye(tailBones, true);
+	  const Eye_R = _findEye(tailBones, false);
+	  const Head = _findHead(tailBones);
 	  const Neck = Head.parent;
 	  const Chest = Neck.parent;
-	  const Hips = _findHips();
+	  const Hips = _findHips(skeleton);
 	  const Spine = _findSpine(Chest, Hips);
-	  const Left_shoulder = _findShoulder(true);
+	  const Left_shoulder = _findShoulder(tailBones, true);
 	  const Left_wrist = _findHand(Left_shoulder);
 	  const Left_elbow = Left_wrist.parent;
 	  const Left_arm = Left_elbow.parent;
-	  const Right_shoulder = _findShoulder(false);
+	  const Right_shoulder = _findShoulder(tailBones, false);
 	  const Right_wrist = _findHand(Right_shoulder);
 	  const Right_elbow = Right_wrist.parent;
 	  const Right_arm = Right_elbow.parent;
-	  const Left_ankle = _findFoot(true);
+	  const Left_ankle = _findFoot(tailBones, true);
 	  const Left_knee = Left_ankle.parent;
 	  const Left_leg = Left_knee.parent;
-	  const Right_ankle = _findFoot(false);
+	  const Right_ankle = _findFoot(tailBones, false);
 	  const Right_knee = Right_ankle.parent;
 	  const Right_leg = Right_knee.parent;
     const modelBones = {
@@ -421,14 +429,6 @@ class Avatar {
       }
     } */
 
-    const _findArmature = bone => {
-      for (; bone; bone = bone.parent) {
-        if (!bone.isBone) {
-        	return bone;
-        }
-      }
-      return null;
-    };
 	  const armature = _findArmature(Hips);
 
     const _getEyePosition = () => {
