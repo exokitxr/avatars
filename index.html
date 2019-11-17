@@ -435,6 +435,9 @@ const z180Quaternion = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3
 
 const scene = new THREE.Scene();
 
+const container = new THREE.Object3D();
+scene.add(container);
+
 const camera = new THREE.PerspectiveCamera(90, window.innerWidth / window.innerHeight, 0.1, 1000);
 camera.position.y = 1.5;
 camera.position.z = 2;
@@ -452,7 +455,7 @@ directionalLight2.position.set(0, -0.25, -0.25);
 scene.add(directionalLight2); */
 
 const gridHelper = new THREE.GridHelper(10, 10);
-scene.add(gridHelper);
+container.add(gridHelper);
 
 const _makeTextMesh = (s = '', color = 0x000000, size = 1) => {
   // create a geometry of packed bitmap glyphs,
@@ -514,8 +517,8 @@ const teleportMeshes = [
   _makeTeleportMesh(),
   _makeTeleportMesh(),
 ];
-scene.add(teleportMeshes[0]);
-scene.add(teleportMeshes[1]);
+container.add(teleportMeshes[0]);
+container.add(teleportMeshes[1]);
 
 const _patchModel = object => {
   object.scene.traverse(o => {
@@ -708,7 +711,7 @@ const mirrorMesh = (() => {
 
   return mesh;
 })();
-scene.add(mirrorMesh);
+container.add(mirrorMesh);
 
 const userHeight = 1.7;
 const _getHeightFactor = rigHeight => rigHeight / userHeight;
@@ -718,7 +721,7 @@ let modelUrl = '';
 let heightFactor = 0;
 const _setLocalModel = newModel => {
   if (rig) {
-    scene.remove(rig.model);
+    container.remove(rig.model);
     rig.destroy();
     rig = null;
   }
@@ -731,12 +734,12 @@ const _setLocalModel = newModel => {
     microphoneMediaStream,
     debug: !newModel,
   });
-  scene.add(rig.model);
+  container.add(rig.model);
   window.model = newModel;
 
   heightFactor = _getHeightFactor(rig.height);
 
-  scene.scale.set(1, 1, 1).divideScalar(heightFactor);
+  container.scale.set(1, 1, 1).divideScalar(heightFactor);
 };
 
 const lastPresseds = [false, false];
@@ -760,7 +763,7 @@ function animate(timestamp, frame, referenceSpace) {
       const {inputSources} = session;
       const gamepads = navigator.getGamepads();
 
-      rig.inputs.hmd.position.copy(vrCamera.position).sub(scene.position).multiplyScalar(heightFactor);
+      rig.inputs.hmd.position.copy(vrCamera.position).sub(container.position).multiplyScalar(heightFactor);
       rig.inputs.hmd.quaternion.copy(vrCamera.quaternion);
 
       const _getGamepad = i => {
@@ -772,7 +775,7 @@ function animate(timestamp, frame, referenceSpace) {
           const {position, orientation, matrix} = transform;
           if (position) { // new WebXR api
             const rawP = localVector.copy(position);
-            const p = localVector2.copy(rawP).sub(scene.position).multiplyScalar(heightFactor);
+            const p = localVector2.copy(rawP).sub(container.position).multiplyScalar(heightFactor);
             const q = localQuaternion.copy(orientation);
             const pressed = gamepad.buttons[0].pressed;
             const lastPressed = lastPresseds[i];
@@ -809,7 +812,7 @@ function animate(timestamp, frame, referenceSpace) {
             localMatrix
               .fromArray(transform.matrix)
               .decompose(rawP, q, s);
-            p.copy(rawP).sub(scene.position).multiplyScalar(heightFactor);
+            p.copy(rawP).sub(container.position).multiplyScalar(heightFactor);
             const pressed = gamepad.buttons[0].pressed;
             const lastPressed = lastPresseds[i];
             const pointer = gamepad.buttons[0].value;
@@ -849,7 +852,7 @@ function animate(timestamp, frame, referenceSpace) {
         teleportMesh.visible = false;
 
         if (pad) {
-          localVector.copy(vrCamera.position).applyMatrix4(localMatrix.getInverse(scene.matrix));
+          localVector.copy(vrCamera.position).applyMatrix4(localMatrix.getInverse(container.matrix));
           localEuler.setFromQuaternion(quaternion, 'YXZ');
 
           for (let i = 0; i < 20; i++, localVector.add(localVector2), localEuler.x = Math.max(localEuler.x - Math.PI*0.07, -Math.PI/2)) {
@@ -866,9 +869,9 @@ function animate(timestamp, frame, referenceSpace) {
             }
           }
         } else if (lastPad) {
-          localVector.copy(teleportMesh.position).applyMatrix4(scene.matrix).sub(vrCamera.position);
+          localVector.copy(teleportMesh.position).applyMatrix4(container.matrix).sub(vrCamera.position);
           localVector.y = 0;
-          scene.position.sub(localVector);
+          container.position.sub(localVector);
         }
 
         if (padX !== 0 || padY !== 0) {
@@ -880,7 +883,7 @@ function animate(timestamp, frame, referenceSpace) {
           const hmdEuler = localEuler.setFromQuaternion(rig.inputs.hmd.quaternion, 'YXZ');
           localEuler.x = 0;
           localEuler.z = 0;
-          scene.position.sub(localVector.multiplyScalar(walkSpeed * (stick ? 3 : 1) * rig.height).applyEuler(hmdEuler));
+          container.position.sub(localVector.multiplyScalar(walkSpeed * (stick ? 3 : 1) * rig.height).applyEuler(hmdEuler));
         }
       };
 
@@ -937,7 +940,7 @@ function animate(timestamp, frame, referenceSpace) {
         for (let i = 0; i < startGripPositions.length; i++) {
           startGripPositions[i].copy(lastPositions[i]);
         }
-        startSceneMatrix.copy(scene.matrix);
+        startSceneMatrix.copy(container.matrix);
         startModelScale = rig ? rig.inputs.hmd.scaleFactor : 1;
       };
       const _processScale = () => {
@@ -952,12 +955,12 @@ function animate(timestamp, frame, referenceSpace) {
 
         const positionDiff = localVector5.copy(currentGripPosition).sub(startGripPosition);
 
-        scene.matrix.copy(startSceneMatrix)
+        container.matrix.copy(startSceneMatrix)
           .multiply(localMatrix.makeTranslation(currentGripPosition.x, currentGripPosition.y, currentGripPosition.z))
           .multiply(localMatrix.makeScale(scaleFactor, scaleFactor, scaleFactor))
           .multiply(localMatrix.makeTranslation(-currentGripPosition.x, -currentGripPosition.y, -currentGripPosition.z))
           .multiply(localMatrix.makeTranslation(positionDiff.x, positionDiff.y, positionDiff.z))
-          .decompose(scene.position, scene.quaternion, scene.scale);
+          .decompose(container.position, container.quaternion, container.scale);
 
         if (rig) {
           rig.inputs.hmd.scaleFactor = startModelScale / scaleFactor;
@@ -1028,12 +1031,12 @@ function animate(timestamp, frame, referenceSpace) {
 
       if (controlsBound === 'firstperson') {
         rig.outputs.eyes.matrixWorld.decompose(camera.position, camera.quaternion, localVector);
-        camera.position.divideScalar(heightFactor).add(scene.position);
+        camera.position.divideScalar(heightFactor).add(container.position);
         camera.quaternion.multiply(z180Quaternion);
         rig.decapitate();
       } else if (controlsBound === 'thirdperson') {
         rig.outputs.eyes.matrixWorld.decompose(camera.position, camera.quaternion, localVector);
-        camera.position.divideScalar(heightFactor).add(scene.position);
+        camera.position.divideScalar(heightFactor).add(container.position);
         camera.quaternion.multiply(z180Quaternion);
         camera.position.add(localVector.set(0, 0.5, 2).applyQuaternion(camera.quaternion));
         rig.undecapitate();
@@ -1401,7 +1404,7 @@ connectButton.addEventListener('click', () => {
         clearInterval(updateInterval);
 
         if (peerConnection.rig) {
-          scene.remove(peerConnection.rig.model);
+          container.remove(peerConnection.rig.model);
           peerConnection.rig.destroy();
         }
       });
@@ -1455,7 +1458,7 @@ connectButton.addEventListener('click', () => {
           console.log('got peer model', {url});
 
           if (peerConnection.rig) {
-            scene.remove(peerConnection.rig.model);
+            container.remove(peerConnection.rig.model);
             peerConnection.rig.destroy();
           }
 
@@ -1468,7 +1471,7 @@ connectButton.addEventListener('click', () => {
             muted: false,
             debug: !model,
           });
-          scene.add(peerConnection.rig.model);
+          container.add(peerConnection.rig.model);
 
           peerConnection.rig.starts = {
             hmd: {
@@ -1726,11 +1729,11 @@ scaleDownButton.addEventListener('click', () => {
   const scaleFactor = 1.25;
 
   const orbitControlsTarget = localVector.copy(orbitControls.target);
-  scene.matrix
+  container.matrix
     .multiply(localMatrix.makeTranslation(orbitControlsTarget.x, orbitControlsTarget.y, orbitControlsTarget.z))
     .multiply(localMatrix.makeScale(scaleFactor, scaleFactor, scaleFactor))
     .multiply(localMatrix.makeTranslation(-orbitControlsTarget.x, -orbitControlsTarget.y, -orbitControlsTarget.z))
-    .decompose(scene.position, scene.quaternion, scene.scale);
+    .decompose(container.position, container.quaternion, container.scale);
 
   if (rig) {
     rig.inputs.hmd.scaleFactor /= scaleFactor;
@@ -1741,11 +1744,11 @@ scaleUpButton.addEventListener('click', () => {
   const scaleFactor = 1/1.25;
 
   const orbitControlsTarget = localVector.copy(orbitControls.target);
-  scene.matrix
+  container.matrix
     .multiply(localMatrix.makeTranslation(orbitControlsTarget.x, orbitControlsTarget.y, orbitControlsTarget.z))
     .multiply(localMatrix.makeScale(scaleFactor, scaleFactor, scaleFactor))
     .multiply(localMatrix.makeTranslation(-orbitControlsTarget.x, -orbitControlsTarget.y, -orbitControlsTarget.z))
-    .decompose(scene.position, scene.quaternion, scene.scale);
+    .decompose(container.position, container.quaternion, container.scale);
 
   if (rig) {
     rig.inputs.hmd.scaleFactor /= scaleFactor;
