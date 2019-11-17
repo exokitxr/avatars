@@ -946,11 +946,7 @@ function animate(timestamp, frame, referenceSpace) {
         const scaleFactor = currentDistance / startDistance;
 
         let startGripPosition = localVector3.copy(startGripPositions[0]).add(startGripPositions[1]).divideScalar(2)
-          /* .divideScalar(heightFactor)
-          .add(scene.position); */
         let currentGripPosition = localVector4.copy(lastPositions[0]).add(lastPositions[1]).divideScalar(2)
-          /* .divideScalar(heightFactor)
-          .add(scene.position); */
         startGripPosition.applyMatrix4(localMatrix.getInverse(startSceneMatrix));
         currentGripPosition.applyMatrix4(localMatrix/*.getInverse(startSceneMatrix)*/);
 
