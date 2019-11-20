@@ -978,71 +978,10 @@ function animate(timestamp, frame, referenceSpace) {
       for (let i = 0; i < mirrorMesh.buttonMeshes.length; i++) {
         mirrorMesh.buttonMeshes[i].material.color.setHex((i === li || i === ri) ? colors.highlight : colors.normal);
       }
+
+      rig.update();
     } else if (controlsBound) {
-      localEuler.setFromQuaternion(rig.inputs.hmd.quaternion, 'YXZ');
-      localEuler.x = Math.min(Math.max(localEuler.x - mouse.movementY * 0.01, -Math.PI/2), Math.PI/2);
-      localEuler.y -= mouse.movementX * 0.01
-      localEuler.z = 0;
-      rig.inputs.hmd.quaternion.setFromEuler(localEuler);
-      mouse.movementX = 0;
-      mouse.movementY = 0;
-
-      localEuler.setFromQuaternion(rig.inputs.hmd.quaternion, 'YXZ');
-      localEuler.x = 0;
-      localEuler.z = 0;
-      const floorRotation = localQuaternion.setFromEuler(localEuler);
-
-      localVector.set(0, 0, 0);
-      if (keys.left) {
-        localVector.x += -1;
-      }
-      if (keys.right) {
-        localVector.x += 1;
-      }
-      if (keys.up) {
-        localVector.z += -1;
-      }
-      if (keys.down) {
-        localVector.z += 1;
-      }
-      rig.inputs.hmd.position.add(localVector.normalize().multiplyScalar(walkSpeed * (keys.shift ? 3 : 1) * rig.height).applyQuaternion(floorRotation));
-      if (keys.space) {
-        const lerpFactor = 0.3;
-        rig.inputs.hmd.position.y = rig.inputs.hmd.position.y * (1-lerpFactor) + rig.height*1.1 * lerpFactor;
-      } else if (keys.z) {
-        const lerpFactor = 0.05;
-        rig.inputs.hmd.position.y = rig.inputs.hmd.position.y * (1-lerpFactor) + rig.height*0.2 * lerpFactor;
-      } else if (keys.c) {
-        const lerpFactor = 0.2;
-        rig.inputs.hmd.position.y = rig.inputs.hmd.position.y * (1-lerpFactor) + rig.height*0.7 * lerpFactor;
-      } else {
-        const lerpFactor = 0.3;
-        rig.inputs.hmd.position.y = rig.inputs.hmd.position.y * (1-lerpFactor) + rig.height*0.9 * lerpFactor;
-      }
-
-      rig.inputs.leftGamepad.position.copy(rig.inputs.hmd.position)
-        .add(localVector.set(0.15, -0.15, -0.2).multiplyScalar(rig.height).applyQuaternion(rig.inputs.hmd.quaternion));
-      rig.inputs.leftGamepad.quaternion.copy(rig.inputs.hmd.quaternion)
-        .multiply(localQuaternion2.setFromAxisAngle(localVector.set(1, 0, 0), Math.PI*0.5));
-      rig.inputs.rightGamepad.position.copy(rig.inputs.hmd.position)
-        .add(localVector.set(-0.15, -0.15, -0.2).multiplyScalar(rig.height).applyQuaternion(rig.inputs.hmd.quaternion));
-      rig.inputs.rightGamepad.quaternion.copy(rig.inputs.hmd.quaternion)
-        .multiply(localQuaternion2.setFromAxisAngle(localVector.set(1, 0, 0), Math.PI*0.5))
-
-      if (controlsBound === 'firstperson') {
-        rig.outputs.eyes.matrixWorld.decompose(camera.position, camera.quaternion, localVector);
-        camera.position.divideScalar(heightFactor).add(container.position);
-        camera.quaternion.multiply(z180Quaternion);
-        rig.decapitate();
-      } else if (controlsBound === 'thirdperson') {
-        rig.outputs.eyes.matrixWorld.decompose(camera.position, camera.quaternion, localVector);
-        camera.position.divideScalar(heightFactor).add(container.position);
-        camera.quaternion.multiply(z180Quaternion);
-        camera.position.add(localVector.set(0, 0.5, 2).applyQuaternion(camera.quaternion));
-        rig.undecapitate();
-      } else {
-        rig.undecapitate();
-      }
+      // defer
     } else {
       const positionOffset = Math.sin((realDateNow()%10000)/10000*Math.PI*2)*2;
       const positionOffset2 = -Math.sin((realDateNow()%5000)/5000*Math.PI*2)*1;
@@ -1074,10 +1013,12 @@ function animate(timestamp, frame, referenceSpace) {
 
       rig.inputs.rightGamepad.pointer = (Math.sin((Date.now()%10000)/10000*Math.PI*2) + 1) / 2;
       rig.inputs.rightGamepad.grip = (Math.sin((Date.now()%10000)/10000*Math.PI*2) + 1) / 2;
-    }
 
-    rig.update();
+      rig.update();
+    }
   }
+
+  renderer.render(scene, camera);
 
   for (let i = 0; i < peerConnections.length; i++) {
     const peerConnection = peerConnections[i];
@@ -1086,15 +1027,76 @@ function animate(timestamp, frame, referenceSpace) {
     }
   }
 
-  /* if (rig) {
-    rig.decapitate();
-  } */
+  if (controlsBound) {
+    localEuler.setFromQuaternion(rig.inputs.hmd.quaternion, 'YXZ');
+    localEuler.x = Math.min(Math.max(localEuler.x - mouse.movementY * 0.01, -Math.PI/2), Math.PI/2);
+    localEuler.y -= mouse.movementX * 0.01
+    localEuler.z = 0;
+    rig.inputs.hmd.quaternion.setFromEuler(localEuler);
+    mouse.movementX = 0;
+    mouse.movementY = 0;
 
-  renderer.render(scene, camera);
+    localEuler.setFromQuaternion(rig.inputs.hmd.quaternion, 'YXZ');
+    localEuler.x = 0;
+    localEuler.z = 0;
+    const floorRotation = localQuaternion.setFromEuler(localEuler);
 
-  /* if (rig) {
-    rig.undecapitate();
-  } */
+    localVector.set(0, 0, 0);
+    if (keys.left) {
+      localVector.x += -1;
+    }
+    if (keys.right) {
+      localVector.x += 1;
+    }
+    if (keys.up) {
+      localVector.z += -1;
+    }
+    if (keys.down) {
+      localVector.z += 1;
+    }
+    rig.inputs.hmd.position.add(localVector.normalize().multiplyScalar(walkSpeed * (keys.shift ? 3 : 1) * rig.height).applyQuaternion(floorRotation));
+    if (keys.space) {
+      const lerpFactor = 0.3;
+      rig.inputs.hmd.position.y = rig.inputs.hmd.position.y * (1-lerpFactor) + rig.height*1.1 * lerpFactor;
+    } else if (keys.z) {
+      const lerpFactor = 0.05;
+      rig.inputs.hmd.position.y = rig.inputs.hmd.position.y * (1-lerpFactor) + rig.height*0.2 * lerpFactor;
+    } else if (keys.c) {
+      const lerpFactor = 0.2;
+      rig.inputs.hmd.position.y = rig.inputs.hmd.position.y * (1-lerpFactor) + rig.height*0.7 * lerpFactor;
+    } else {
+      const lerpFactor = 0.3;
+      rig.inputs.hmd.position.y = rig.inputs.hmd.position.y * (1-lerpFactor) + rig.height*0.9 * lerpFactor;
+    }
+
+    rig.inputs.leftGamepad.position.copy(rig.inputs.hmd.position)
+      .add(localVector.set(0.15, -0.15, -0.2).multiplyScalar(rig.height).applyQuaternion(rig.inputs.hmd.quaternion));
+    rig.inputs.leftGamepad.quaternion.copy(rig.inputs.hmd.quaternion)
+      .multiply(localQuaternion2.setFromAxisAngle(localVector.set(1, 0, 0), Math.PI*0.5));
+    rig.inputs.rightGamepad.position.copy(rig.inputs.hmd.position)
+      .add(localVector.set(-0.15, -0.15, -0.2).multiplyScalar(rig.height).applyQuaternion(rig.inputs.hmd.quaternion));
+    rig.inputs.rightGamepad.quaternion.copy(rig.inputs.hmd.quaternion)
+      .multiply(localQuaternion2.setFromAxisAngle(localVector.set(1, 0, 0), Math.PI*0.5))
+
+    if (controlsBound === 'firstperson') {
+      rig.decapitate();
+    } else if (controlsBound === 'thirdperson') {
+      rig.undecapitate();
+    }
+
+    rig.update();
+
+    if (controlsBound === 'firstperson') {
+      rig.outputs.eyes.matrixWorld.decompose(camera.position, camera.quaternion, localVector);
+      camera.position.divideScalar(heightFactor).add(container.position);
+      camera.quaternion.multiply(z180Quaternion);
+    } else if (controlsBound === 'thirdperson') {
+      rig.outputs.eyes.matrixWorld.decompose(camera.position, camera.quaternion, localVector);
+      camera.position.divideScalar(heightFactor).add(container.position);
+      camera.quaternion.multiply(z180Quaternion);
+      camera.position.add(localVector.set(0, 0.5, 2).applyQuaternion(camera.quaternion));
+    }
+  }
 }
 renderer.setAnimationLoop(animate);
 
