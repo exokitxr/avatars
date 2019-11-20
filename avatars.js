@@ -344,20 +344,21 @@ const _exportSkeleton = skeleton => {
   const armature = _findArmature(hips);
   return JSON.stringify(_exportBone(armature));
 }
-const _importBone = b => {
+const _importObject = (b, Cons, ChildCons) => {
   const [name, array, children] = b;
-  const bone = new THREE.Bone();
+  const bone = new Cons();
   bone.name = name;
   bone.position.fromArray(array, 0);
   bone.quaternion.fromArray(array, 3);
   bone.scale.fromArray(array, 3+4);
   for (let i = 0; i < children.length; i++) {
-    bone.add(_importBone(children[i]));
+    bone.add(_importObject(children[i], ChildCons, ChildCons));
   }
   return bone;
 };
+const _importArmature = b => _importObject(b, THREE.Object3D, THREE.Bone);
 const _importSkeleton = s => {
-  const armature = _importBone(JSON.parse(s));
+  const armature = _importArmature(JSON.parse(s));
   return new THREE.Skeleton(armature.children);
 };
 
