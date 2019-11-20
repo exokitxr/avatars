@@ -329,7 +329,7 @@ const _findFoot = (tailBones, left) => {
 };
 const _findArmature = bone => {
   for (;; bone = bone.parent) {
-    if (!bone.isBone || !bone.parent) {
+    if (!bone.isBone) {
       return bone;
     }
   }
