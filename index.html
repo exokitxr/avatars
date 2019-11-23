@@ -69,6 +69,10 @@ header nav:not(.selected):hover span {
   background-color: #FFF;
   overflow-y: auto;
 }
+.avatar-models {
+  display: flex;
+  flex-direction: column;
+}
 .a-avatar {
   cursor: pointer;
 }
@@ -347,37 +351,7 @@ header > .login-form.phase-3 > .phaseless-content
 
       <div class=examples>
         <h3>Examples</h3>
-        <p>
-          <a class="a-avatar">none</a><br>
-          <a href="https://avatar-models.exokit.org/model.glb" class="a-avatar">model.glb</a><br>
-          <a href="https://avatar-models.exokit.org/model2.vrm" class="a-avatar">model2.vrm</a><br>
-          <a href="https://avatar-models.exokit.org/model3.unitypackage" class="a-avatar">model3.unitypackage</a><br>
-          <a href="https://avatar-models.exokit.org/model4.zip" class="a-avatar">model4.zip</a><br>
-          <a href="https://avatar-models.exokit.org/model5.fbx" class="a-avatar">model5.fbx</a><br>
-          <a href="https://avatar-models.exokit.org/model6.zip" class="a-avatar">model6.zip</a><br>
-          <a href="https://avatar-models.exokit.org/model7.vrm" class="a-avatar">model7.vrm</a><br>
-          <a href="https://avatar-models.exokit.org/model8.vrm" class="a-avatar">model8.vrm</a><br>
-          <a href="https://avatar-models.exokit.org/model9.vrm" class="a-avatar">model9.vrm</a><br>
-          <a href="https://avatar-models.exokit.org/model10.vrm" class="a-avatar">model10.vrm</a><br>
-          <a href="https://avatar-models.exokit.org/model11.vrm" class="a-avatar">model11.vrm</a><br>
-          <a href="https://avatar-models.exokit.org/model12.fbx" class="a-avatar">model12.fbx</a><br>
-          <a href="https://avatar-models.exokit.org/model13.zip" class="a-avatar">model13.zip</a><br>
-          <a href="https://avatar-models.exokit.org/model14.zip" class="a-avatar">model14.zip</a><br>
-          <a href="https://avatar-models.exokit.org/model15.zip" class="a-avatar">model15.zip</a><br>
-          <a href="https://avatar-models.exokit.org/model16.zip" class="a-avatar">model16.zip</a><br>
-          <a href="https://avatar-models.exokit.org/model17.zip" class="a-avatar">model17.zip</a><br>
-          <a href="https://avatar-models.exokit.org/model18.zip" class="a-avatar">model18.zip</a><br>
-          <a href="https://avatar-models.exokit.org/model19.zip" class="a-avatar">model19.zip</a><br>
-          <a href="https://avatar-models.exokit.org/model20.zip" class="a-avatar">model20.zip</a><br>
-          <a href="https://avatar-models.exokit.org/model21.zip" class="a-avatar">model21.zip</a><br>
-          <a href="https://avatar-models.exokit.org/model22.zip" class="a-avatar">model22.zip</a><br>
-          <a href="https://avatar-models.exokit.org/model23.zip" class="a-avatar">model23.zip</a><br>
-          <a href="https://avatar-models.exokit.org/model24.zip" class="a-avatar">model24.zip</a><br>
-          <a href="https://avatar-models.exokit.org/model25.zip" class="a-avatar">model25.zip</a><br>
-          <a href="https://avatar-models.exokit.org/model26.zip" class="a-avatar">model26.zip</a><br>
-          <a href="https://avatar-models.exokit.org/model27.png" class="a-avatar">model27.png</a><br>
-          <a href="https://avatar-models.exokit.org/model28.png" class="a-avatar">model28.png</a><br>
-        </p>
+        <p class=avatar-models id=avatar-models></p>
         <div class=multibutton>
           <label for="upload-file-button">
             <a class="button first last">Upload file...</a>
@@ -412,6 +386,7 @@ header > .login-form.phase-3 > .phaseless-content
     <script type=module>
 import './webxr-polyfill.module.js';
 import './HelioWebXRPolyfill.js';
+import avatarModels from 'https://avatar-models.exokit.org/avatar-models.js'
 import ModelLoader from 'https://model-loader.exokit.org/model-loader.js';
 import Avatar from './avatars.js';
 import {XRChannelConnection} from 'https://multiplayer.exokit.org/multiplayer.js';
@@ -432,6 +407,26 @@ const localEuler = new THREE.Euler();
 const localRay = new THREE.Ray();
 
 const z180Quaternion = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI);
+
+{
+  const avatarModelsEl = document.getElementById('avatar-models');
+
+  const noneAAvatar = document.createElement('a');
+  noneAAvatar.classList.add('a-avatar');
+  noneAAvatar.innerText = 'none';
+  avatarModelsEl.appendChild(noneAAvatar);
+
+  for (let i = 0; i < avatarModels.length; i++) {
+    const avatarmodel = avatarModels[i];
+
+    const aAvatar = document.createElement('a');
+    aAvatar.classList.add('a-avatar');
+    aAvatar.setAttribute('href', `https://avatar-models.exokit.org/${avatarmodel.url}`);
+    aAvatar.innerText = avatarmodel.label;
+
+    avatarModelsEl.appendChild(aAvatar);
+  }
+}
 
 const scene = new THREE.Scene();
 
