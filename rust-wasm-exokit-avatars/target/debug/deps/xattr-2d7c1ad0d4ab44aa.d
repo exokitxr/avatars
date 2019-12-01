@@ -1,0 +1,12 @@
+/Users/chris/Documents/Github/avatars/rust-wasm-exokit-avatars/target/debug/deps/xattr-2d7c1ad0d4ab44aa.rmeta: /Users/chris/.cargo/registry/src/github.com-1ecc6299db9ec823/xattr-0.2.2/src/lib.rs /Users/chris/.cargo/registry/src/github.com-1ecc6299db9ec823/xattr-0.2.2/src/error.rs /Users/chris/.cargo/registry/src/github.com-1ecc6299db9ec823/xattr-0.2.2/src/sys/mod.rs /Users/chris/.cargo/registry/src/github.com-1ecc6299db9ec823/xattr-0.2.2/src/util.rs /Users/chris/.cargo/registry/src/github.com-1ecc6299db9ec823/xattr-0.2.2/src/sys/linux_macos/mod.rs /Users/chris/.cargo/registry/src/github.com-1ecc6299db9ec823/xattr-0.2.2/src/sys/linux_macos/macos.rs
+
+/Users/chris/Documents/Github/avatars/rust-wasm-exokit-avatars/target/debug/deps/libxattr-2d7c1ad0d4ab44aa.rlib: /Users/chris/.cargo/registry/src/github.com-1ecc6299db9ec823/xattr-0.2.2/src/lib.rs /Users/chris/.cargo/registry/src/github.com-1ecc6299db9ec823/xattr-0.2.2/src/error.rs /Users/chris/.cargo/registry/src/github.com-1ecc6299db9ec823/xattr-0.2.2/src/sys/mod.rs /Users/chris/.cargo/registry/src/github.com-1ecc6299db9ec823/xattr-0.2.2/src/util.rs /Users/chris/.cargo/registry/src/github.com-1ecc6299db9ec823/xattr-0.2.2/src/sys/linux_macos/mod.rs /Users/chris/.cargo/registry/src/github.com-1ecc6299db9ec823/xattr-0.2.2/src/sys/linux_macos/macos.rs
+
+/Users/chris/Documents/Github/avatars/rust-wasm-exokit-avatars/target/debug/deps/xattr-2d7c1ad0d4ab44aa.d: /Users/chris/.cargo/registry/src/github.com-1ecc6299db9ec823/xattr-0.2.2/src/lib.rs /Users/chris/.cargo/registry/src/github.com-1ecc6299db9ec823/xattr-0.2.2/src/error.rs /Users/chris/.cargo/registry/src/github.com-1ecc6299db9ec823/xattr-0.2.2/src/sys/mod.rs /Users/chris/.cargo/registry/src/github.com-1ecc6299db9ec823/xattr-0.2.2/src/util.rs /Users/chris/.cargo/registry/src/github.com-1ecc6299db9ec823/xattr-0.2.2/src/sys/linux_macos/mod.rs /Users/chris/.cargo/registry/src/github.com-1ecc6299db9ec823/xattr-0.2.2/src/sys/linux_macos/macos.rs
+
+/Users/chris/.cargo/registry/src/github.com-1ecc6299db9ec823/xattr-0.2.2/src/lib.rs:
+/Users/chris/.cargo/registry/src/github.com-1ecc6299db9ec823/xattr-0.2.2/src/error.rs:
+/Users/chris/.cargo/registry/src/github.com-1ecc6299db9ec823/xattr-0.2.2/src/sys/mod.rs:
+/Users/chris/.cargo/registry/src/github.com-1ecc6299db9ec823/xattr-0.2.2/src/util.rs:
+/Users/chris/.cargo/registry/src/github.com-1ecc6299db9ec823/xattr-0.2.2/src/sys/linux_macos/mod.rs:
+/Users/chris/.cargo/registry/src/github.com-1ecc6299db9ec823/xattr-0.2.2/src/sys/linux_macos/macos.rs:
