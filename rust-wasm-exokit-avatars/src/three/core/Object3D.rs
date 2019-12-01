@@ -27,5 +27,5 @@ pub struct Object3D {
 }
 
 fn main(){
-
+    return
 } 
