@@ -1,0 +1,11 @@
+/Users/chris/Documents/Github/avatars/rust/target/release/deps/unicode_segmentation-2c3daac63031d1f6.rmeta: /Users/chris/.cargo/registry/src/github.com-1ecc6299db9ec823/unicode-segmentation-1.6.0/src/lib.rs /Users/chris/.cargo/registry/src/github.com-1ecc6299db9ec823/unicode-segmentation-1.6.0/src/grapheme.rs /Users/chris/.cargo/registry/src/github.com-1ecc6299db9ec823/unicode-segmentation-1.6.0/src/tables.rs /Users/chris/.cargo/registry/src/github.com-1ecc6299db9ec823/unicode-segmentation-1.6.0/src/word.rs /Users/chris/.cargo/registry/src/github.com-1ecc6299db9ec823/unicode-segmentation-1.6.0/src/sentence.rs
+
+/Users/chris/Documents/Github/avatars/rust/target/release/deps/libunicode_segmentation-2c3daac63031d1f6.rlib: /Users/chris/.cargo/registry/src/github.com-1ecc6299db9ec823/unicode-segmentation-1.6.0/src/lib.rs /Users/chris/.cargo/registry/src/github.com-1ecc6299db9ec823/unicode-segmentation-1.6.0/src/grapheme.rs /Users/chris/.cargo/registry/src/github.com-1ecc6299db9ec823/unicode-segmentation-1.6.0/src/tables.rs /Users/chris/.cargo/registry/src/github.com-1ecc6299db9ec823/unicode-segmentation-1.6.0/src/word.rs /Users/chris/.cargo/registry/src/github.com-1ecc6299db9ec823/unicode-segmentation-1.6.0/src/sentence.rs
+
+/Users/chris/Documents/Github/avatars/rust/target/release/deps/unicode_segmentation-2c3daac63031d1f6.d: /Users/chris/.cargo/registry/src/github.com-1ecc6299db9ec823/unicode-segmentation-1.6.0/src/lib.rs /Users/chris/.cargo/registry/src/github.com-1ecc6299db9ec823/unicode-segmentation-1.6.0/src/grapheme.rs /Users/chris/.cargo/registry/src/github.com-1ecc6299db9ec823/unicode-segmentation-1.6.0/src/tables.rs /Users/chris/.cargo/registry/src/github.com-1ecc6299db9ec823/unicode-segmentation-1.6.0/src/word.rs /Users/chris/.cargo/registry/src/github.com-1ecc6299db9ec823/unicode-segmentation-1.6.0/src/sentence.rs
+
+/Users/chris/.cargo/registry/src/github.com-1ecc6299db9ec823/unicode-segmentation-1.6.0/src/lib.rs:
+/Users/chris/.cargo/registry/src/github.com-1ecc6299db9ec823/unicode-segmentation-1.6.0/src/grapheme.rs:
+/Users/chris/.cargo/registry/src/github.com-1ecc6299db9ec823/unicode-segmentation-1.6.0/src/tables.rs:
+/Users/chris/.cargo/registry/src/github.com-1ecc6299db9ec823/unicode-segmentation-1.6.0/src/word.rs:
+/Users/chris/.cargo/registry/src/github.com-1ecc6299db9ec823/unicode-segmentation-1.6.0/src/sentence.rs:

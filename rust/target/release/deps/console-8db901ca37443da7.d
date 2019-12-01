@@ -1,0 +1,12 @@
+/Users/chris/Documents/Github/avatars/rust/target/release/deps/console-8db901ca37443da7.rmeta: /Users/chris/.cargo/registry/src/github.com-1ecc6299db9ec823/console-0.9.1/src/lib.rs /Users/chris/.cargo/registry/src/github.com-1ecc6299db9ec823/console-0.9.1/src/common_term.rs /Users/chris/.cargo/registry/src/github.com-1ecc6299db9ec823/console-0.9.1/src/kb.rs /Users/chris/.cargo/registry/src/github.com-1ecc6299db9ec823/console-0.9.1/src/term.rs /Users/chris/.cargo/registry/src/github.com-1ecc6299db9ec823/console-0.9.1/src/unix_term.rs /Users/chris/.cargo/registry/src/github.com-1ecc6299db9ec823/console-0.9.1/src/utils.rs
+
+/Users/chris/Documents/Github/avatars/rust/target/release/deps/libconsole-8db901ca37443da7.rlib: /Users/chris/.cargo/registry/src/github.com-1ecc6299db9ec823/console-0.9.1/src/lib.rs /Users/chris/.cargo/registry/src/github.com-1ecc6299db9ec823/console-0.9.1/src/common_term.rs /Users/chris/.cargo/registry/src/github.com-1ecc6299db9ec823/console-0.9.1/src/kb.rs /Users/chris/.cargo/registry/src/github.com-1ecc6299db9ec823/console-0.9.1/src/term.rs /Users/chris/.cargo/registry/src/github.com-1ecc6299db9ec823/console-0.9.1/src/unix_term.rs /Users/chris/.cargo/registry/src/github.com-1ecc6299db9ec823/console-0.9.1/src/utils.rs
+
+/Users/chris/Documents/Github/avatars/rust/target/release/deps/console-8db901ca37443da7.d: /Users/chris/.cargo/registry/src/github.com-1ecc6299db9ec823/console-0.9.1/src/lib.rs /Users/chris/.cargo/registry/src/github.com-1ecc6299db9ec823/console-0.9.1/src/common_term.rs /Users/chris/.cargo/registry/src/github.com-1ecc6299db9ec823/console-0.9.1/src/kb.rs /Users/chris/.cargo/registry/src/github.com-1ecc6299db9ec823/console-0.9.1/src/term.rs /Users/chris/.cargo/registry/src/github.com-1ecc6299db9ec823/console-0.9.1/src/unix_term.rs /Users/chris/.cargo/registry/src/github.com-1ecc6299db9ec823/console-0.9.1/src/utils.rs
+
+/Users/chris/.cargo/registry/src/github.com-1ecc6299db9ec823/console-0.9.1/src/lib.rs:
+/Users/chris/.cargo/registry/src/github.com-1ecc6299db9ec823/console-0.9.1/src/common_term.rs:
+/Users/chris/.cargo/registry/src/github.com-1ecc6299db9ec823/console-0.9.1/src/kb.rs:
+/Users/chris/.cargo/registry/src/github.com-1ecc6299db9ec823/console-0.9.1/src/term.rs:
+/Users/chris/.cargo/registry/src/github.com-1ecc6299db9ec823/console-0.9.1/src/unix_term.rs:
+/Users/chris/.cargo/registry/src/github.com-1ecc6299db9ec823/console-0.9.1/src/utils.rs:

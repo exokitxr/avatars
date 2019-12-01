@@ -1,0 +1,18 @@
+cargo:rerun-if-env-changed=LIBZ_SYS_STATIC
+cargo:rerun-if-changed=build.rs
+OPT_LEVEL = Some("3")
+TARGET = Some("x86_64-apple-darwin")
+HOST = Some("x86_64-apple-darwin")
+CC_x86_64-apple-darwin = None
+CC_x86_64_apple_darwin = None
+HOST_CC = None
+CC = None
+CFLAGS_x86_64-apple-darwin = None
+CFLAGS_x86_64_apple_darwin = None
+HOST_CFLAGS = None
+CFLAGS = None
+CRATE_CC_NO_DEFAULTS = None
+DEBUG = Some("false")
+CARGO_CFG_TARGET_FEATURE = Some("fxsr,sse,sse2,sse3,ssse3")
+running "cc" "src/smoke.c" "-o" "/dev/null" "-lz"
+cargo:rustc-link-lib=z

@@ -1,0 +1,38 @@
+TARGET = Some("x86_64-apple-darwin")
+OPT_LEVEL = Some("3")
+HOST = Some("x86_64-apple-darwin")
+CC_x86_64-apple-darwin = None
+CC_x86_64_apple_darwin = None
+HOST_CC = None
+CC = None
+CFLAGS_x86_64-apple-darwin = None
+CFLAGS_x86_64_apple_darwin = None
+HOST_CFLAGS = None
+CFLAGS = None
+CRATE_CC_NO_DEFAULTS = None
+DEBUG = Some("false")
+CARGO_CFG_TARGET_FEATURE = Some("fxsr,sse,sse2,sse3,ssse3")
+running: "cc" "-O3" "-ffunction-sections" "-fdata-sections" "-fPIC" "-m64" "-I" "bzip2-1.0.6" "-D_FILE_OFFSET_BITS=64" "-DBZ_NO_STDIO" "-o" "/Users/chris/Documents/Github/avatars/rust/target/release/build/bzip2-sys-c538868df25fc8dd/out/lib/bzip2-1.0.6/blocksort.o" "-c" "bzip2-1.0.6/blocksort.c"
+exit code: 0
+running: "cc" "-O3" "-ffunction-sections" "-fdata-sections" "-fPIC" "-m64" "-I" "bzip2-1.0.6" "-D_FILE_OFFSET_BITS=64" "-DBZ_NO_STDIO" "-o" "/Users/chris/Documents/Github/avatars/rust/target/release/build/bzip2-sys-c538868df25fc8dd/out/lib/bzip2-1.0.6/huffman.o" "-c" "bzip2-1.0.6/huffman.c"
+exit code: 0
+running: "cc" "-O3" "-ffunction-sections" "-fdata-sections" "-fPIC" "-m64" "-I" "bzip2-1.0.6" "-D_FILE_OFFSET_BITS=64" "-DBZ_NO_STDIO" "-o" "/Users/chris/Documents/Github/avatars/rust/target/release/build/bzip2-sys-c538868df25fc8dd/out/lib/bzip2-1.0.6/crctable.o" "-c" "bzip2-1.0.6/crctable.c"
+exit code: 0
+running: "cc" "-O3" "-ffunction-sections" "-fdata-sections" "-fPIC" "-m64" "-I" "bzip2-1.0.6" "-D_FILE_OFFSET_BITS=64" "-DBZ_NO_STDIO" "-o" "/Users/chris/Documents/Github/avatars/rust/target/release/build/bzip2-sys-c538868df25fc8dd/out/lib/bzip2-1.0.6/randtable.o" "-c" "bzip2-1.0.6/randtable.c"
+exit code: 0
+running: "cc" "-O3" "-ffunction-sections" "-fdata-sections" "-fPIC" "-m64" "-I" "bzip2-1.0.6" "-D_FILE_OFFSET_BITS=64" "-DBZ_NO_STDIO" "-o" "/Users/chris/Documents/Github/avatars/rust/target/release/build/bzip2-sys-c538868df25fc8dd/out/lib/bzip2-1.0.6/compress.o" "-c" "bzip2-1.0.6/compress.c"
+exit code: 0
+running: "cc" "-O3" "-ffunction-sections" "-fdata-sections" "-fPIC" "-m64" "-I" "bzip2-1.0.6" "-D_FILE_OFFSET_BITS=64" "-DBZ_NO_STDIO" "-o" "/Users/chris/Documents/Github/avatars/rust/target/release/build/bzip2-sys-c538868df25fc8dd/out/lib/bzip2-1.0.6/decompress.o" "-c" "bzip2-1.0.6/decompress.c"
+exit code: 0
+running: "cc" "-O3" "-ffunction-sections" "-fdata-sections" "-fPIC" "-m64" "-I" "bzip2-1.0.6" "-D_FILE_OFFSET_BITS=64" "-DBZ_NO_STDIO" "-o" "/Users/chris/Documents/Github/avatars/rust/target/release/build/bzip2-sys-c538868df25fc8dd/out/lib/bzip2-1.0.6/bzlib.o" "-c" "bzip2-1.0.6/bzlib.c"
+exit code: 0
+AR_x86_64-apple-darwin = None
+AR_x86_64_apple_darwin = None
+HOST_AR = None
+AR = None
+running: "ar" "crs" "/Users/chris/Documents/Github/avatars/rust/target/release/build/bzip2-sys-c538868df25fc8dd/out/lib/libbz2.a" "/Users/chris/Documents/Github/avatars/rust/target/release/build/bzip2-sys-c538868df25fc8dd/out/lib/bzip2-1.0.6/blocksort.o" "/Users/chris/Documents/Github/avatars/rust/target/release/build/bzip2-sys-c538868df25fc8dd/out/lib/bzip2-1.0.6/huffman.o" "/Users/chris/Documents/Github/avatars/rust/target/release/build/bzip2-sys-c538868df25fc8dd/out/lib/bzip2-1.0.6/crctable.o" "/Users/chris/Documents/Github/avatars/rust/target/release/build/bzip2-sys-c538868df25fc8dd/out/lib/bzip2-1.0.6/randtable.o" "/Users/chris/Documents/Github/avatars/rust/target/release/build/bzip2-sys-c538868df25fc8dd/out/lib/bzip2-1.0.6/compress.o" "/Users/chris/Documents/Github/avatars/rust/target/release/build/bzip2-sys-c538868df25fc8dd/out/lib/bzip2-1.0.6/decompress.o" "/Users/chris/Documents/Github/avatars/rust/target/release/build/bzip2-sys-c538868df25fc8dd/out/lib/bzip2-1.0.6/bzlib.o"
+exit code: 0
+cargo:rustc-link-lib=static=bz2
+cargo:rustc-link-search=native=/Users/chris/Documents/Github/avatars/rust/target/release/build/bzip2-sys-c538868df25fc8dd/out/lib
+cargo:root=/Users/chris/Documents/Github/avatars/rust/target/release/build/bzip2-sys-c538868df25fc8dd/out
+cargo:include=/Users/chris/Documents/Github/avatars/rust/target/release/build/bzip2-sys-c538868df25fc8dd/out/include
