@@ -2,15 +2,19 @@ extern crate wasm_bindgen;
 
 use wasm_bindgen::prelude::*;
 use std::time::{SystemTime};
-use std::cmp;
 
 #[wasm_bindgen]
 pub struct Avatar {
     decapitated: bool,
     springBoneManager: bool, //todo, not a bool
-    modelBones: bool, // todo, not a bool
+    modelBones: [i64; 19],
+    modelBoneOutputs: [i64; 19],
     debugMeshes: bool, // todo, not a bool
-    inputs: bool, // todo, not a bool
+    inputs: {
+        hmd: {
+            scaleFactor: i64
+        }
+    }, // todo, not a bool
 }
 
 impl Avatar {
@@ -59,31 +63,31 @@ impl Avatar {
         for k in 0..self.modelBones.len() {
             // todo assign types
             let modelBone = self.modelBones[k];
-            let modelBoneOutput = self.modelBoneOutputs[k];
+            let modelBoneOutput = self.modelBoneOutputs[modelBone];
 
-            if k == "Hips" {
+            if modelBone == "Hips" {
                 modelBone.position.copy(modelBoneOutput.position);
             }
 
             modelBone.quaternion.multiplyQuaternions(modelBoneOutput.quaternion, modelBone.initialQuaternion);
 
-            if k == "Left_ankle" || k == "Right_ankle" {
+            if modelBone == "Left_ankle" || modelBone == "Right_ankle" {
                 modelBone.quaternion.multiply(upRotation);
             }
-            else if k == "Left_wrist" {
+            else if modelBone == "Left_wrist" {
                 modelBone.quaternion.multiply(leftRotation); // center
             }
-            else if k == "Right_wrist" {
+            else if modelBone == "Right_wrist" {
                 modelBone.quaternion.multiply(rightRotation); // center
             }
             modelBone.updateMatrixWorld();
 
             let now = SystemTime::now();
-            let timeDiff = cmp::min(now - self.lastTimeStamp, 1000)
+            let timeDiff = cmp::min(now - self.lastTimeStamp, 1000);
             self.lastTimeStamp = now;
 
             if self.options.fingers {
-                pub fn _processFingerBones(left) {
+                pub fn _processFingerBones(&self) {
 
                 }
 

@@ -26,7 +26,7 @@ pub struct Object3D {
     userData: String // todo, the is a '{}' in JS
 }
 
-// impl Object3D {
+impl Object3D {
 //     // Todo, figure out callbacks in rust, function as param
 //     pub fn traverse(&self, callback: String) {
 //         callback(self);
@@ -36,7 +36,28 @@ pub struct Object3D {
 //             children[i].traverse(callback)
 //         }
 //     }
-// }
+
+    pub fn updateMatrixWorld(&mut self, force: bool) { 
+        if self.matrixAutoUpdate {
+            self.updateMatrix();
+        }
+        if self.matrixWorldNeedsUpdate || force {
+            if !self.parent {
+                self.matrixWorld.copy(self.matrix);
+            }
+            else {
+                self.matrixWorld.multiplyMatrices(self.parent.matrixWorld, self.matrix);
+            }
+            self.matrixWorldNeedsUpdate = true;
+            force = true;
+        }
+        let children: [i32; 10] = self.children;
+
+        for child in children {
+            child.updateMatrixWorld(force);
+        }
+    }
+}
 
 fn main(){
     return
