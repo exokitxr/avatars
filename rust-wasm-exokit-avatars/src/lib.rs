@@ -2,19 +2,49 @@ extern crate wasm_bindgen;
 
 use wasm_bindgen::prelude::*;
 use std::time::{SystemTime};
+use std::cmp;
+
+struct Options {
+    fingers: bool
+}
+
+struct ModelBoneOutputs {
+    quaternion: f64,
+    position: f64
+}
+
+struct Hmd {
+    scaleFactor: f64
+}
+
+struct Inputs {
+    hmd: Hmd
+}
+
+struct Model {
+    scale: f64
+}
+
+struct SpringBoneManager {
+    springBoneList: [i64; 10]
+}
+
+struct ModelBones {
+    quaternion: f64
+}
 
 #[wasm_bindgen]
 pub struct Avatar {
     decapitated: bool,
-    springBoneManager: bool, //todo, not a bool
-    modelBones: [i64; 19],
+    modelBones: ModelBones,
     modelBoneOutputs: [i64; 19],
     debugMeshes: bool, // todo, not a bool
-    inputs: {
-        hmd: {
-            scaleFactor: i64
-        }
-    }, // todo, not a bool
+    options: Options,
+    lastTimeStamp: std::time::SystemTime,
+    inputs: Inputs,
+    lastModelScaleFactor: f64,
+    model: Model,
+    springBoneManager: SpringBoneManager
 }
 
 impl Avatar {
@@ -35,19 +65,18 @@ impl Avatar {
     }
 
     pub fn update(&mut self) {
-        let wasDecapitated: bool = self.decapitated;
-        if self.springBoneManager && wasDecapitated {
+        if self.decapitated {
             self.undecapitate();
         }
 
         // todo, not a bool
-        let modelScaleFactor: bool = self.inputs.hmd.scaleFactor;
+        let modelScaleFactor = self.inputs.hmd.scaleFactor;
         if modelScaleFactor != self.lastModelScaleFactor {
             self.model.scale.set(modelScaleFactor, modelScaleFactor, modelScaleFactor);
             self.lastModelScaleFactor = modelScaleFactor;
 
-            for springBoneGroup in 0..self.springBoneManager.springBoneList.len() {
-                for springBone in 0..springBoneGroup.len() {
+            for springBoneGroup in &self.springBoneManager.springBoneList {
+                for springBone in &springBoneGroup {
                     springBone._worldBoneLength = springBone.bone
                     // not sure if chaining is allowed in rust
                     .localToWorld(localVector.copy(springBone._initialLocalChildPosition))
@@ -60,9 +89,7 @@ impl Avatar {
         self.shoulderTransforms.Update();
         self.legsManager.Update();
 
-        for k in 0..self.modelBones.len() {
-            // todo assign types
-            let modelBone = self.modelBones[k];
+        for modelBone in &self.modelBones {
             let modelBoneOutput = self.modelBoneOutputs[modelBone];
 
             if modelBone == "Hips" {
@@ -87,8 +114,8 @@ impl Avatar {
             self.lastTimeStamp = now;
 
             if self.options.fingers {
-                pub fn _processFingerBones(&self) {
-
+                pub fn _processFingerBones() {
+                    return
                 }
 
             }

@@ -7,7 +7,7 @@ pub struct Object3D {
     name: String,
     r#type: String,
     parent: String, // todo, this is 'null' in JS
-    children: [i32; 10], // todo, this needs to be resizable
+    children: Vec<i32>,
     up: String, // todo, Object3D.DefaultUp.clone()
     position: String, // todo, new Vector3()
     rotation: String, // todo, new Euler()
