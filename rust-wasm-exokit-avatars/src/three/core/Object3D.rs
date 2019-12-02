@@ -26,6 +26,18 @@ pub struct Object3D {
     userData: String // todo, the is a '{}' in JS
 }
 
+// impl Object3D {
+//     // Todo, figure out callbacks in rust, function as param
+//     pub fn traverse(&self, callback: String) {
+//         callback(self);
+//         // use the array size at instance of array param
+//         let children = self.children;
+//         for i in 0..children.len() {
+//             children[i].traverse(callback)
+//         }
+//     }
+// }
+
 fn main(){
     return
 } 

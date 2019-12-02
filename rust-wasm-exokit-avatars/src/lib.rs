@@ -1,13 +1,26 @@
 extern crate wasm_bindgen;
-
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
-extern {
-    pub fn alert(s: &str);
+pub struct Avatar {
+    decapitated: bool,
+    springBoneManager: bool, //todo, not a bool
+    modelBones: bool // todo, not a bool
 }
 
-#[wasm_bindgen]
-pub fn greet(name: &str) {
-    alert(&format!("Hello, {}!", name));
+impl Avatar {
+
+    pub fn undecapitate(&self) {
+        if self.decapitated {
+            
+        }
+    }
+
+    pub fn update(&self) {
+        let wasDecapitated: bool = self.decapitated;
+        if self.springBoneManager && wasDecapitated {
+            self.undecapitate();
+        }
+    }
+
 }
