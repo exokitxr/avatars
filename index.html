@@ -1257,11 +1257,11 @@ enterXrButton.addEventListener('click', async () => {
   };
   await _loadReferenceSpace();
   const loadReferenceSpaceInterval = setInterval(_loadReferenceSpace, 1000);
-
-  renderer.vr.setSession(session);
-
-  let interations = 0;
+  
   await new Promise((accept, reject) => {
+    renderer.vr.setSession(session);
+
+    let interations = 0;
     const _raf = (timestamp, frame) => {
       const pose = frame.getViewerPose(referenceSpace);
       if (pose) {
