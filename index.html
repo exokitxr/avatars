@@ -1260,29 +1260,42 @@ enterXrButton.addEventListener('click', async () => {
 
   renderer.vr.setSession(session);
 
-  session.requestAnimationFrame((timestamp, frame) => {
-    const pose = frame.getViewerPose(referenceSpace);
-    const viewport = session.renderState.baseLayer.getViewport(pose.views[0]);
-    // const width = viewport.width;
-    const height = viewport.height;
-    const fullWidth = (() => {
-      let result = 0;
-      for (let i = 0; i < pose.views.length; i++) {
-        result += session.renderState.baseLayer.getViewport(pose.views[i]).width;
+  let interations = 0;
+  await new Promise((accept, reject) => {
+    const _raf = (timestamp, frame) => {
+      const pose = frame.getViewerPose(referenceSpace);
+      if (pose) {
+        const viewport = session.renderState.baseLayer.getViewport(pose.views[0]);
+        // const width = viewport.width;
+        const height = viewport.height;
+        const fullWidth = (() => {
+          let result = 0;
+          for (let i = 0; i < pose.views.length; i++) {
+            result += session.renderState.baseLayer.getViewport(pose.views[i]).width;
+          }
+          return result;
+        })();
+        renderer.setSize(fullWidth, height);
+        renderer.setPixelRatio(1);
+
+        renderer.setAnimationLoop(null);
+
+        renderer.vr.enabled = true;
+        renderer.vr.setSession(session);
+        renderer.vr.setAnimationLoop(animate);
+
+        accept();
+      } else {
+        interations++;
+        if (iterations > 100) {
+          console.warn('did not receive pose after many frames');
+        }
+        session.requestAnimationFrame(_raf);
       }
-      return result;
-    })();
-    renderer.setSize(fullWidth, height);
-    renderer.setPixelRatio(1);
-
-    renderer.setAnimationLoop(null);
-
-    renderer.vr.enabled = true;
-    renderer.vr.setSession(session);
-    renderer.vr.setAnimationLoop(animate);
-
-    console.log('loaded root in XR');
+    };
+    session.requestAnimationFrame(_raf);
   });
+  console.log('loaded XR');
 });
 
 let microphoneMediaStream = null;
