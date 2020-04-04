@@ -1,0 +1,1 @@
+/Users/chris/Documents/Github/avatars/rust-wasm-exokit-avatars/target/wasm32-unknown-unknown/release/rust_wasm_exokit_avatars.wasm: /Users/chris/Documents/Github/avatars/rust-wasm-exokit-avatars/src/lib.rs

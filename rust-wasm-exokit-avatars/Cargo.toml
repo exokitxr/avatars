@@ -1,0 +1,14 @@
+[package]
+name = "rust-wasm-exokit-avatars"
+version = "0.1.0"
+authors = ["Chris <chris.eddy.dev@gmail.com>"]
+edition = "2018"
+description = "A Rust-WASM port for the avatars.js code in Exokit"
+license = "MIT/Apache-2.0"
+repository = "https://github.com/exokitxr/avatars"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+wasm-bindgen = "0.2.55"
