@@ -81,3 +81,5 @@ function animate() {
 }
 animate();
 ```
+
+## [License](https://github.com/exokitxr/license)
