@@ -1,3 +1,4 @@
+import THREE from '../three.js';
 import {Helpers} from './Unity.js';
 
 const stepRate = 0.2;

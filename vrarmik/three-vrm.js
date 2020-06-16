@@ -1,3 +1,5 @@
+import THREE from '../three.js';
+
 var __three_vrm__ =
 /******/ (function(modules) { // webpackBootstrap
 /******/ 	// The module cache

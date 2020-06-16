@@ -1,6 +1,7 @@
 /**
  * @author Slayvin / http://slayvin.net
  */
+import THREE from './three.js';
 
 THREE.Reflector = function ( geometry, options ) {
 

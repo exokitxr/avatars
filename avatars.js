@@ -1,4 +1,4 @@
-import THREE from '../three.module.js';
+import THREE from '../three.js';
 import './vrarmik/three-vrm.js';
 import {fixSkeletonZForward} from './vrarmik/SkeletonUtils.js';
 import PoseManager from './vrarmik/PoseManager.js';
