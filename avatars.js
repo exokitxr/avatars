@@ -1,3 +1,4 @@
+import THREE from '../three.module.js';
 import './vrarmik/three-vrm.js';
 import {fixSkeletonZForward} from './vrarmik/SkeletonUtils.js';
 import PoseManager from './vrarmik/PoseManager.js';
@@ -8,8 +9,8 @@ import skeletonString from './skeleton.js';
 
 const zeroVector = new THREE.Vector3();
 const upRotation = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.PI/2);
-const leftRotation = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI*0.8);
-const rightRotation = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), -Math.PI*0.8);
+const leftRotation = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI*0.5);
+const rightRotation = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), -Math.PI*0.5);
 const z180Quaternion = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI);
 
 const localVector = new THREE.Vector3();
@@ -61,7 +62,7 @@ const _copySkeleton = (src, dst) => {
 };
 
 const cubeGeometry = new THREE.ConeBufferGeometry(0.05, 0.2, 3)
-  .applyMatrix(new THREE.Matrix4().makeRotationFromQuaternion(
+  .applyMatrix4(new THREE.Matrix4().makeRotationFromQuaternion(
     new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 1)))
   );
 const cubeMaterials ={};
@@ -540,6 +541,7 @@ class Avatar {
     this.hairBones = hairBones;
 
     this.springBoneManager = null;
+    let springBoneManagerPromise = null;
     if (options.hair) {
       new Promise((accept, reject) => {
         if (!object) {
@@ -594,7 +596,7 @@ class Avatar {
           };
         }
 
-        new THREE.VRMSpringBoneImporter().import(object)
+        springBoneManagerPromise = new THREE.VRMSpringBoneImporter().import(object)
           .then(springBoneManager => {
             this.springBoneManager = springBoneManager;
           });
@@ -871,7 +873,13 @@ class Avatar {
 
     this.decapitated = false;
     if (options.decapitate) {
-      this.decapitate();
+      if (springBoneManagerPromise) {
+        springBoneManagerPromise.then(() => {
+          this.decapitate();
+        });
+      } else {
+        this.decapitate();
+      }
     }
 	}
   initializeBonePositions(setups) {
