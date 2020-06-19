@@ -62,7 +62,7 @@ const _copySkeleton = (src, dst) => {
 };
 
 const cubeGeometry = new THREE.ConeBufferGeometry(0.05, 0.2, 3)
-  .applyMatrix4(new THREE.Matrix4().makeRotationFromQuaternion(
+  .applyMatrix(new THREE.Matrix4().makeRotationFromQuaternion(
     new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 1)))
   );
 const cubeMaterials ={};
