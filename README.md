@@ -69,7 +69,7 @@ avatar.setMicrophoneMediaStream(microphoneMediaStream); // set microphoneMediaSt
 
 function animate() {
   const now = Date.now();
-  avatar.inputs.hmd.position.set(1.5 + Math.sin((now%2000)/2000*Math.PI*2)*0.5); // or, get pose from WebXR
+  avatar.inputs.hmd.position.set(0, 1.5 + Math.sin((now%2000)/2000*Math.PI*2)*0.5, 0); // or, get pose from WebXR
   avatar.leftGamepad.hmd.position.copy(avatar.inputs.hmd.position).add(new THREE.Vector3(0.2, -0.3, -0.3));
   avatar.leftGamepad.pointer = 0.5; // for finger animation
   avatar.leftGamepad.grip = 1;
