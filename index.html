@@ -305,10 +305,13 @@ header > .login-form.phase-3 > .phaseless-content
   padding: 0 30px;
 }
     </style>
-    <script src="three.js"></script>
-    <script src="OrbitControls.js"></script>
-    <script src="Reflector.js"></script>
-    <script src="bmfont.js"></script>
+    <script type="module">
+      import THREE from './three.module.js';
+      window.THREE = THREE;
+    </script>
+    <script type="module" src="OrbitControls.js"></script>
+    <script type="module" src="Reflector.js"></script>
+    <script type="module" src="bmfont.js"></script>
   </head>
   <body>
     <div class=body>
@@ -495,8 +498,8 @@ const _makeTextMesh = (s = '', color = 0x000000, size = 1) => {
 };
 
 const teleportGeometry = new THREE.TorusBufferGeometry(0.5, 0.15, 3, 5)
-  .applyMatrix(new THREE.Matrix4().makeRotationX(-(Math.PI / 2)))
-  .applyMatrix(new THREE.Matrix4().makeRotationY((1 / 20) * (Math.PI * 2)));
+  .applyMatrix4(new THREE.Matrix4().makeRotationX(-(Math.PI / 2)))
+  .applyMatrix4(new THREE.Matrix4().makeRotationY((1 / 20) * (Math.PI * 2)));
 const teleportMaterial = new THREE.MeshBasicMaterial({
   color: 0x44c2ff,
 });
@@ -633,7 +636,7 @@ const mirrorMesh = (() => {
   const mirrorWidth = 3;
   const mirrorHeight = 2;
   const geometry = new THREE.PlaneBufferGeometry(mirrorWidth, mirrorHeight)
-    .applyMatrix(new THREE.Matrix4().makeTranslation(0, 1, 0));
+    .applyMatrix4(new THREE.Matrix4().makeTranslation(0, 1, 0));
   const mesh = new THREE.Reflector(geometry, {
     clipBias: 0.003,
     textureWidth: 1024 * window.devicePixelRatio,
@@ -647,7 +650,7 @@ const mirrorMesh = (() => {
 
   const borderMesh = new THREE.Mesh(
     new THREE.BoxBufferGeometry(mirrorWidth + 0.1, mirrorHeight + 0.1, 0.1)
-      .applyMatrix(new THREE.Matrix4().makeTranslation(0, 1, -0.1/2 - 0.01)),
+      .applyMatrix4(new THREE.Matrix4().makeTranslation(0, 1, -0.1/2 - 0.01)),
     new THREE.MeshPhongMaterial({
       color: 0x5c6bc0,
     })
@@ -753,8 +756,8 @@ function animate(timestamp, frame, referenceSpace) {
   const timeDiff = now - lastTimestamp;
 
   if (rig) {
-    if (renderer.vr.enabled) {
-      const vrCameras = renderer.vr.getCamera(camera).cameras;
+    if (renderer.xr.enabled) {
+      const vrCameras = renderer.xr.getCamera(camera).cameras;
       const vrCamera = vrCameras[0];
       const vrCamera2 = vrCameras[1];
       vrCamera.matrixWorld.decompose(vrCamera.position, vrCamera.quaternion, vrCamera.scale);
@@ -1257,9 +1260,9 @@ enterXrButton.addEventListener('click', async () => {
   };
   await _loadReferenceSpace();
   const loadReferenceSpaceInterval = setInterval(_loadReferenceSpace, 1000);
-  
+
   await new Promise((accept, reject) => {
-    renderer.vr.setSession(session);
+    renderer.xr.setSession(session);
 
     let interations = 0;
     const _raf = (timestamp, frame) => {
@@ -1280,9 +1283,9 @@ enterXrButton.addEventListener('click', async () => {
 
         renderer.setAnimationLoop(null);
 
-        renderer.vr.enabled = true;
-        renderer.vr.setSession(session);
-        renderer.vr.setAnimationLoop(animate);
+        renderer.xr.enabled = true;
+        renderer.xr.setSession(session);
+        renderer.xr.setAnimationLoop(animate);
 
         accept();
       } else {
