@@ -13,6 +13,7 @@ class VRTrackingReferences {
     this.rightHand = new THREE.Object3D();
     this.rightHand.pointer = 0;
     this.rightHand.grip = 0;
+    this.floorHeight = 0;
     /* this.head.onchange = () => {
       console.log('change 2', new Error().stack);
     }; */

@@ -150,7 +150,7 @@ class Leg {
 
 	getStandFactor() {
 		return 1 - Math.pow(Math.min(Math.max(
-			(Helpers.getWorldPosition(this.legsManager.rig.shoulderTransforms.eyes, localVector).add(this.eyesToUpperLegOffset).y - this.legLength) / (this.legsManager.rig.height*0.2),
+			(Helpers.getWorldPosition(this.legsManager.rig.shoulderTransforms.eyes, localVector).add(this.eyesToUpperLegOffset).y - this.legsManager.poseManager.vrTransforms.floorHeight - this.legLength) / (this.legsManager.rig.height*0.2),
 		0), 1), 0.7);
 	}
 }
@@ -221,7 +221,7 @@ class LegsManager {
 	  }
 
     const hipsFloorPosition = localVector.copy(this.hips.position);
-    hipsFloorPosition.y = 0;
+    hipsFloorPosition.y = this.poseManager.vrTransforms.floorHeight;
     const hipsFloorEuler = localEuler.setFromQuaternion(this.hips.quaternion, 'YXZ');
     hipsFloorEuler.x = 0;
     hipsFloorEuler.z = 0;
@@ -387,7 +387,7 @@ class LegsManager {
     if (this.rig.shoulderTransforms.prone) {
     	const targetPosition = Helpers.getWorldPosition(this.leftLeg.upperLeg, localVector6)
         .add(
-        	localVector7.set(0, -this.leftLeg.legLength*0.95, 0)
+        	localVector7.set(0, -this.leftLeg.legLength*0.95 + this.poseManager.vrTransforms.floorHeight, 0)
         	  .applyQuaternion(this.hips.quaternion)
         );
       targetPosition.y = 0;
@@ -413,13 +413,13 @@ class LegsManager {
       this.leftLeg.foot.stickTransform.position.lerp(targetPosition, 0.1);
 		} else {
 			const targetPosition = localVector6.copy(this.leftLeg.foot.stickTransform.position);
-			targetPosition.y = 0;
+			targetPosition.y = this.poseManager.vrTransforms.floorHeight;
 			this.leftLeg.foot.stickTransform.position.lerp(targetPosition, 0.2);
 		}
 		if (this.rig.shoulderTransforms.prone) {
     	const targetPosition = Helpers.getWorldPosition(this.rightLeg.upperLeg, localVector6)
         .add(
-        	localVector7.set(0, -this.rightLeg.legLength*0.95, 0)
+        	localVector7.set(0, -this.rightLeg.legLength*0.95 + this.poseManager.vrTransforms.floorHeight, 0)
         	  .applyQuaternion(this.hips.quaternion)
         );
       targetPosition.y = 0;
@@ -446,7 +446,7 @@ class LegsManager {
       this.rightLeg.foot.stickTransform.position.lerp(targetPosition, 0.1);
 		} else {
 			const targetPosition = localVector6.copy(this.rightLeg.foot.stickTransform.position);
-			targetPosition.y = 0;
+			targetPosition.y = this.poseManager.vrTransforms.floorHeight;
 			this.rightLeg.foot.stickTransform.position.lerp(targetPosition, 0.2);
 		}
 
