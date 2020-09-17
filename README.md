@@ -75,6 +75,8 @@ function animate() {
   avatar.inputs.leftGamepad.grip = 1;
   avatar.inputs.rightGamepad.position.copy(avatar.inputs.hmd.position).add(new THREE.Vector3(-0.2, -0.3, -0.3));
 
+  avatar.setFloorHeight(0) // sets the floor height that exokit uses to determine the pose
+
   avatar.update();
 
   requestAnimationFrame(animate);

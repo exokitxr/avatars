@@ -1066,6 +1066,7 @@ class Avatar {
       this.decapitated = true;
     }
   }
+
   undecapitate() {
     if (this.decapitated) {
       this.modelBones.Head.traverse(o => {
@@ -1079,6 +1080,14 @@ class Avatar {
       }
       this.decapitated = false;
     }
+  }
+
+  setFloorHeight(floorHeight) {
+    this.poseManager.vrTransforms.floorHeight = floorHeight;
+  }
+
+  getFloorHeight() {
+    return this.poseManager.vrTransforms.floorHeight;
   }
 
   destroy() {
