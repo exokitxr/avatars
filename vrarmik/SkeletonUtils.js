@@ -1,3 +1,5 @@
+import THREE from '../three.module.js';
+
 /**
 * Takes in a rootBone and recursively traverses the bone heirarchy,
 * setting each bone's +Z axis to face it's child bones. The IK system follows this

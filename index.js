@@ -15,3 +15,5 @@ https.createServer({
   .listen(443)
 
 console.log(`https://dev.exokit.org`);
+
+app.listen(3100, () => console.log(`localhost:3100`));

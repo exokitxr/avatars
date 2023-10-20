@@ -1,3 +1,5 @@
+import THREE from '../three.module.js';
+
 class ArmTransforms
 	{
 		constructor() {

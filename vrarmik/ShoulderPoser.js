@@ -1,3 +1,4 @@
+import THREE from '../three.module.js';
 import {Helpers} from './Unity.js';
 
 const rightVector = new THREE.Vector3(1, 0, 0);
