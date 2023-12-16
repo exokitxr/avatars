@@ -4,7 +4,7 @@
   "description": "Exokit Avatars",
   "main": "index.js",
   "dependencies": {
-    "express": "^4.17.1"
+    "express": "^4.17.3"
   },
   "devDependencies": {
     "image-size": "^0.7.4",
